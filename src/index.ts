@@ -29,6 +29,16 @@ export type {
   RuntimeConfig,
   HookConfig,
   ExecutionConfig,
+  FixScope,
+  DialogLoopConfig,
+  TestFailureInfo,
+  IterationResult,
+  DialogLoopSummary,
+  ControlledFixOptions,
+  ControlledFixOutcome,
+  AIAttributionResult,
+  AutoFixPROptions,
+  AutoFixPRResult,
 } from './types.js';
 
 // --- Config ---
@@ -56,6 +66,12 @@ export { validateConfig } from './validators/config-validator.js';
 
 // --- Self-Healing ---
 export { createSelfHealingLoop, categorizeFailure, analyzeFailureWithLLM } from './self-healing/index.js';
+export { runDialogLoop, createJsonResultParser } from './self-healing/index.js';
+export type { TestRunner, ResultParser, FixApplier, DialogLoopOptions } from './self-healing/index.js';
+export { applyControlledFix } from './self-healing/index.js';
+export type { ConfigValidator, ConfigFixer, PRGenerator, FsOps, ControlledFixerOptions } from './self-healing/index.js';
+export { generateFixPR } from './self-healing/index.js';
+export type { GitExecutor, PatchWriter } from './self-healing/index.js';
 
 // --- LLM ---
 export { createLlmProvider, createOpenAIProvider, createOllamaProvider, createTokenTracker, SYSTEM_PROMPTS } from './llm/index.js';

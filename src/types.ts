@@ -302,6 +302,82 @@ export interface FixOutcome {
   rolledBack: boolean;
 }
 
+// ===== Advanced Self-Healing Types (v1.1) =====
+
+export type FixScope = 'config-only' | 'config-and-source';
+
+export interface DialogLoopConfig {
+  maxIterations?: number;
+  pollIntervalMs?: number;
+  sameErrorThreshold?: number;
+  autoRerunOnFix?: boolean;
+}
+
+export interface TestFailureInfo {
+  title: string;
+  error: string;
+  attribution?: AIAttributionResult;
+}
+
+export interface IterationResult {
+  iteration: number;
+  totalTests: number;
+  passed: number;
+  failed: number;
+  failedTests: string[];
+  fixesApplied: string[];
+  durationMs: number;
+}
+
+export interface DialogLoopSummary {
+  iterations: IterationResult[];
+  finalPassed: number;
+  finalFailed: number;
+  totalFixesApplied: number;
+  success: boolean;
+}
+
+export interface ControlledFixOptions {
+  scope?: FixScope;
+  dryRun?: boolean;
+  verify?: boolean;
+  reportDir?: string;
+}
+
+export interface ControlledFixOutcome {
+  success: boolean;
+  scope: FixScope;
+  fixedItems: string[];
+  rolledBack: boolean;
+  prUrl?: string;
+  error?: string;
+}
+
+export interface AIAttributionResult {
+  testName: string;
+  rootCause: string;
+  category: 'frontend' | 'backend' | 'network' | 'environment' | 'test-script';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  fixSuggestion: {
+    description: string;
+    filePath: string;
+    codePatch: string;
+  };
+  confidence: number;
+}
+
+export interface AutoFixPROptions {
+  branchPrefix?: string;
+  baseBranch?: string;
+  draftOnly?: boolean;
+}
+
+export interface AutoFixPRResult {
+  prUrl: string;
+  branch: string;
+  patchFile: string;
+}
+
 // ===== Adapter Types =====
 
 export interface BackendAdapter {

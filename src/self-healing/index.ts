@@ -3,6 +3,14 @@ import { SYSTEM_PROMPTS } from '../llm/index.js';
 
 export type { SelfHealingResult, FixOutcome };
 
+// Advanced Self-Healing (v1.1)
+export { runDialogLoop, createJsonResultParser } from './dialog-loop-runner.js';
+export type { TestRunner, ResultParser, FixApplier, DialogLoopOptions } from './dialog-loop-runner.js';
+export { applyControlledFix } from './controlled-fixer.js';
+export type { ConfigValidator, ConfigFixer, PRGenerator, FsOps, ControlledFixerOptions } from './controlled-fixer.js';
+export { generateFixPR } from './auto-fix-generator.js';
+export type { GitExecutor, PatchWriter } from './auto-fix-generator.js';
+
 export interface SelfHealingLoop {
   run(testResultsDir: string): Promise<SelfHealingResult>;
 }

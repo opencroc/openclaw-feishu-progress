@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-13
+
+### Added
+- **Dialog Loop Runner** (`src/self-healing/dialog-loop-runner.ts`)
+  - `runDialogLoop()` — multi-iteration test→fix→rerun loop with error deduplication
+  - `createJsonResultParser()` — Playwright output parser
+  - Pluggable `TestRunner`, `ResultParser`, `FixApplier` abstractions
+  - Same-error threshold to prevent infinite loops, `autoRerunOnFix` toggle
+- **Controlled Fixer** (`src/self-healing/controlled-fixer.ts`)
+  - `applyControlledFix()` — two-phase fix engine: config-only + config-and-source
+  - Automatic backup before mutation, rollback on failure
+  - Dry-run validation before write, post-write verification
+  - Injectable `ConfigValidator`, `ConfigFixer`, `PRGenerator`, `FsOps`
+- **Auto-Fix PR Generator** (`src/self-healing/auto-fix-generator.ts`)
+  - `generateFixPR()` — creates git branch, applies patch, pushes, creates draft PR via `gh`
+  - All PRs strictly draft-only (safety invariant)
+  - Injectable `GitExecutor` and `PatchWriter` for testability
+- New types: `FixScope`, `DialogLoopConfig`, `TestFailureInfo`, `IterationResult`, `DialogLoopSummary`,
+  `ControlledFixOptions`, `ControlledFixOutcome`, `AIAttributionResult`, `AutoFixPROptions`, `AutoFixPRResult`
+- 25 new tests (314 total, 29 files)
+
 ## [1.0.0] - 2026-03-13
 
 ### Added
