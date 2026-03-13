@@ -52,7 +52,10 @@ export { createImpactReporter } from './analyzers/impact-reporter.js';
 export { validateConfig } from './validators/config-validator.js';
 
 // --- Self-Healing ---
-export { createSelfHealingLoop, categorizeFailure } from './self-healing/index.js';
+export { createSelfHealingLoop, categorizeFailure, analyzeFailureWithLLM } from './self-healing/index.js';
+
+// --- LLM ---
+export { createLlmProvider, createOpenAIProvider, createOllamaProvider, createTokenTracker, SYSTEM_PROMPTS } from './llm/index.js';
 
 // --- Adapters ---
 export type { BackendAdapter, LlmProvider } from './adapters/types.js';

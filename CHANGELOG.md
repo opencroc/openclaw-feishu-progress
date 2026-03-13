@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-beta.1] - 2026-03-13
+
+### Added
+- **LLM module** (`src/llm/`) — pluggable LLM provider system
+  - `createOpenAIProvider()` — OpenAI + Zhipu (GLM) compatible client via native `fetch`
+  - `createOllamaProvider()` — local Ollama inference client
+  - `createLlmProvider()` — factory with env variable fallback (`OPENCROC_LLM_API_KEY`)
+  - `createTokenTracker()` — accumulates token estimates across calls
+  - `SYSTEM_PROMPTS` — built-in system prompts for failure analysis and chain planning
+- `analyzeFailureWithLLM()` — LLM-enhanced failure analysis with heuristic fallback
+- 22 new LLM-related unit tests (112 total)
+- Public exports: `createLlmProvider`, `createOpenAIProvider`, `createOllamaProvider`, `createTokenTracker`, `SYSTEM_PROMPTS`, `analyzeFailureWithLLM`
+
+### Changed
+- `createSelfHealingLoop()` now accepts optional `LlmProvider` parameter
+- Self-healing loop tracks token usage when LLM is provided
+
 ## [0.2.0-alpha.1] - 2026-03-13
 
 ### Added

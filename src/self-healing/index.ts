@@ -1,9 +1,15 @@
-import type { SelfHealingConfig, SelfHealingResult, FixOutcome } from '../types.js';
+import type { SelfHealingConfig, SelfHealingResult, FixOutcome, LlmProvider } from '../types.js';
+import { SYSTEM_PROMPTS } from '../llm/index.js';
 
 export type { SelfHealingResult, FixOutcome };
 
 export interface SelfHealingLoop {
   run(testResultsDir: string): Promise<SelfHealingResult>;
+}
+
+export interface SelfHealingOptions {
+  config: SelfHealingConfig;
+  llm?: LlmProvider;
 }
 
 /**
@@ -34,11 +40,61 @@ export function categorizeFailure(errorMessage: string): {
 }
 
 /**
+ * LLM-enhanced failure analysis with heuristic fallback.
+ */
+export async function analyzeFailureWithLLM(
+  errorMessage: string,
+  llm?: LlmProvider,
+): Promise<{ rootCause: string; category: string; suggestedFix: string; confidence: number }> {
+  // Always get heuristic result as fallback
+  const heuristic = categorizeFailure(errorMessage);
+
+  if (!llm) {
+    return {
+      rootCause: errorMessage,
+      category: heuristic.category,
+      suggestedFix: '',
+      confidence: heuristic.confidence,
+    };
+  }
+
+  try {
+    const response = await llm.chat([
+      { role: 'system', content: SYSTEM_PROMPTS.failureAnalysis },
+      { role: 'user', content: `Analyze this test failure:\n\n${errorMessage}` },
+    ]);
+
+    const parsed = JSON.parse(response) as {
+      rootCause?: string;
+      category?: string;
+      suggestedFix?: string;
+      confidence?: number;
+    };
+
+    return {
+      rootCause: parsed.rootCause || errorMessage,
+      category: parsed.category || heuristic.category,
+      suggestedFix: parsed.suggestedFix || '',
+      confidence: parsed.confidence || heuristic.confidence,
+    };
+  } catch {
+    // LLM failed — fall back to heuristic
+    return {
+      rootCause: errorMessage,
+      category: heuristic.category,
+      suggestedFix: '',
+      confidence: heuristic.confidence,
+    };
+  }
+}
+
+/**
  * Attempt a config-only fix: validate and write corrected config JSON.
  */
 async function attemptConfigFix(
   _testResultsDir: string,
   _mode: SelfHealingConfig['mode'],
+  _llm?: LlmProvider,
 ): Promise<FixOutcome> {
   // TODO: Load module config → run autoFix validation → write corrected JSON
   // For now, return a no-op outcome
@@ -50,7 +106,10 @@ async function attemptConfigFix(
   };
 }
 
-export function createSelfHealingLoop(config: SelfHealingConfig): SelfHealingLoop {
+/**
+ * Create a self-healing loop. Accepts an optional LLM provider for AI-enhanced analysis.
+ */
+export function createSelfHealingLoop(config: SelfHealingConfig, llm?: LlmProvider): SelfHealingLoop {
   return {
     async run(testResultsDir: string): Promise<SelfHealingResult> {
       const maxIterations = config.maxIterations || 3;
@@ -58,15 +117,21 @@ export function createSelfHealingLoop(config: SelfHealingConfig): SelfHealingLoo
       const fixed: string[] = [];
       const remaining: string[] = [];
       let iterations = 0;
+      let totalTokensUsed = 0;
 
       for (let i = 0; i < maxIterations; i++) {
         iterations = i + 1;
 
-        const outcome = await attemptConfigFix(testResultsDir, mode);
+        const outcome = await attemptConfigFix(testResultsDir, mode, llm);
         if (outcome.success) {
           fixed.push(...outcome.fixedItems);
         } else {
           remaining.push(`iteration-${i + 1}: no fix applied`);
+        }
+
+        // Track token usage if LLM is available
+        if (llm) {
+          totalTokensUsed += llm.estimateTokens(`iteration-${i + 1}`);
         }
 
         // If all fixed, stop early
@@ -77,7 +142,7 @@ export function createSelfHealingLoop(config: SelfHealingConfig): SelfHealingLoo
         iterations,
         fixed,
         remaining,
-        totalTokensUsed: 0,
+        totalTokensUsed,
       };
     },
   };
