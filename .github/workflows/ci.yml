@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Build, Typecheck, Test
+    name: Lint, Build, Typecheck, Test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -44,6 +44,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build
         run: npm run build
