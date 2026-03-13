@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-13
+
+### Added
+- **Plugin system** (`src/plugins/`) — extensible hook-based architecture
+  - `createPluginRegistry()` — register, unregister, invoke hooks across plugins
+  - `definePlugin()` — type-safe plugin definition helper
+  - Lifecycle hooks: `setup`, `teardown`, `transformConfig`, `beforePipeline`, `afterPipeline`, `beforeStep`, `afterStep`, `onError`
+  - Config transforms applied sequentially across registered plugins
+- **CI template generators** (`src/ci/`) — ready-to-use CI/CD pipelines
+  - `generateGitHubActionsTemplate()` — GitHub Actions workflow with Playwright, artifact upload
+  - `generateGitLabCITemplate()` — GitLab CI pipeline with multi-stage (generate → test)
+  - `generateCiTemplate()` — platform dispatcher, `listCiPlatforms()`
+  - Options: custom Node versions, install command, self-heal step, generate/test args
+- **Report generators** (`src/reporters/`) — multi-format pipeline reports
+  - `generateHtmlReport()` — dark-themed dashboard with summary cards, tables, validation issues
+  - `generateJsonReport()` — serializable JSON output
+  - `generateMarkdownReport()` — structured Markdown with sections
+  - `generateReports()` — orchestrator for multiple formats
+  - HTML reporter includes XSS protection via `escapeHtml()`
+- **VSCode extension scaffold** (`src/vscode/`) — everything needed to build the extension
+  - `generateExtensionManifest()` — complete `package.json` with commands, views, configuration
+  - `generateExtensionEntrypoint()` — TypeScript source for `extension.ts` with all command registrations
+  - `buildModuleTree()` / `buildStatusTree()` — sidebar tree view data providers
+  - 9 commands: init, generate, generateModule, test, testModule, validate, heal, openReport, ci
+- **CLI commands**: `opencroc ci` (generate CI templates) and `opencroc report` (generate reports)
+- 49 new tests across 4 modules (plugins: 10, ci: 11, reporters: 11, vscode: 13, exports: 4)
+- Total: 20 test files, 161 tests
+
+### Changed
+- CLI version bumped to 0.3.0
+- CLI now has 7 commands: init, generate, test, validate, heal, ci, report
+- Updated all READMEs (EN, ZH, JA) with refreshed roadmap
+- Public API exports expanded with plugins, CI, reporters, VSCode modules
+
 ## [0.2.0] - 2026-03-14
 
 ### Summary
@@ -175,7 +209,8 @@ See individual pre-release entries below for detailed changelogs.
 - GitHub Actions CI (`ci.yml`) with Node 20.x/22.x matrix
 - GitHub Actions release (`release.yml`) with tag-triggered npm publish
 
-[Unreleased]: https://github.com/opencroc/opencroc/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/opencroc/opencroc/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/opencroc/opencroc/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/opencroc/opencroc/compare/v0.2.0-rc.1...v0.2.0
 [0.2.0-rc.1]: https://github.com/opencroc/opencroc/compare/v0.2.0-beta.1...v0.2.0-rc.1
 [0.2.0-beta.1]: https://github.com/opencroc/opencroc/compare/v0.2.0-alpha.1...v0.2.0-beta.1

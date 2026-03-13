@@ -50,4 +50,31 @@ describe('public API exports', () => {
     expect(typeof api.createSelfHealingLoop).toBe('function');
     expect(typeof api.categorizeFailure).toBe('function');
   });
+
+  it('exports plugin system', () => {
+    expect(typeof api.createPluginRegistry).toBe('function');
+    expect(typeof api.definePlugin).toBe('function');
+  });
+
+  it('exports CI templates', () => {
+    expect(typeof api.generateCiTemplate).toBe('function');
+    expect(typeof api.listCiPlatforms).toBe('function');
+    expect(typeof api.generateGitHubActionsTemplate).toBe('function');
+    expect(typeof api.generateGitLabCITemplate).toBe('function');
+  });
+
+  it('exports reporters', () => {
+    expect(typeof api.generateReports).toBe('function');
+    expect(typeof api.generateHtmlReport).toBe('function');
+    expect(typeof api.generateJsonReport).toBe('function');
+    expect(typeof api.generateMarkdownReport).toBe('function');
+  });
+
+  it('exports VSCode extension scaffold', () => {
+    expect(typeof api.generateExtensionManifest).toBe('function');
+    expect(typeof api.generateExtensionEntrypoint).toBe('function');
+    expect(typeof api.buildModuleTree).toBe('function');
+    expect(typeof api.buildStatusTree).toBe('function');
+    expect(Array.isArray(api.VSCODE_COMMANDS)).toBe(true);
+  });
 });

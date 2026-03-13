@@ -7,7 +7,7 @@ const program = new Command();
 program
   .name('opencroc')
   .description('AI-native E2E testing framework')
-  .version('0.2.0');
+  .version('0.3.0');
 
 program
   .command('init')
@@ -57,6 +57,27 @@ program
   .action(async (opts) => {
     const { heal } = await import('./commands/heal.js');
     await heal(opts);
+  });
+
+program
+  .command('ci')
+  .description('Generate CI/CD pipeline template')
+  .option('-p, --platform <name>', 'CI platform (github, gitlab)', 'github')
+  .option('--self-heal', 'Include self-healing step')
+  .option('--node <versions>', 'Node.js versions (comma-separated)', '20.x')
+  .action(async (opts) => {
+    const { ci } = await import('./commands/ci.js');
+    await ci(opts);
+  });
+
+program
+  .command('report')
+  .description('Generate pipeline report (HTML/JSON/Markdown)')
+  .option('-f, --format <formats>', 'Report formats (comma-separated)', 'html')
+  .option('-o, --output <dir>', 'Output directory')
+  .action(async (opts) => {
+    const { report } = await import('./commands/report.js');
+    await report(opts);
   });
 
 program.parse();

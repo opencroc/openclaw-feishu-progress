@@ -63,3 +63,17 @@ export { createSequelizeAdapter } from './adapters/sequelize.js';
 export { createTypeORMAdapter } from './adapters/typeorm.js';
 export { createPrismaAdapter } from './adapters/prisma.js';
 export { createAdapter, detectAdapter, resolveAdapter } from './adapters/registry.js';
+
+// --- Plugins ---
+export type { OpenCrocPlugin, PluginRegistry } from './plugins/types.js';
+export { createPluginRegistry, definePlugin } from './plugins/index.js';
+
+// --- CI Templates ---
+export { generateCiTemplate, listCiPlatforms, generateGitHubActionsTemplate, generateGitLabCITemplate } from './ci/index.js';
+
+// --- Reporters ---
+export type { ReportOutput } from './reporters/index.js';
+export { generateReports, generateHtmlReport, generateJsonReport, generateMarkdownReport } from './reporters/index.js';
+
+// --- VSCode Extension Scaffold ---
+export { COMMANDS as VSCODE_COMMANDS, generateExtensionManifest, generateExtensionEntrypoint, buildModuleTree, buildStatusTree } from './vscode/index.js';

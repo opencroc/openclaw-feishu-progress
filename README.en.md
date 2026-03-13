@@ -289,11 +289,13 @@ export default defineConfig({
 - [x] TypeORM / Prisma adapter
 - [x] Ollama local LLM support
 - [x] Real-world validation (102 tables, 65 relations, 78 generated tests)
+- [x] GitHub Actions / GitLab CI integration
+- [x] VS Code extension scaffold
+- [x] Plugin system
+- [x] HTML / JSON / Markdown report generation
 - [ ] NestJS controller parser
 - [ ] Visual dashboard (opencroc.com)
-- [ ] GitHub Actions integration
-- [ ] VS Code extension
-- [ ] Plugin system
+- [ ] Drizzle ORM adapter
 
 ## Documentation
 
