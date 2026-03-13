@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-03-13
+
+### Added
+- `opencroc validate` command — config + pipeline validation with error/warning reporting
+  - Runs `scan` + `validate` pipeline steps, merges config-level and module-level errors
+  - Sets `process.exitCode = 1` on errors (CI-friendly)
+- `opencroc test` command — discovers and runs generated Playwright tests
+  - Auto-discovers `*.spec.ts` and `*.test.ts` in outDir
+  - `--module` filter, `--headed` mode
+  - Spawns `npx playwright test` with proper args
+- `opencroc heal` command — runs self-healing loop on test failures
+  - `--max-iterations` flag (default: 3)
+  - Reads `selfHealing.mode` from config
+  - Reports iterations, fixed items, remaining issues, token usage
+- 10 new unit tests (validate: 3, test: 4, heal: 3)
+
+### Changed
+- CLI version bumped to 0.1.10
+- All 5 CLI commands now fully implemented (init, generate, test, validate, heal)
+
 ## [0.1.9] - 2026-03-13
 
 ### Added
