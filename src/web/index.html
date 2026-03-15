@@ -201,36 +201,67 @@ function layoutGraph(){
   const w=c.clientWidth||800,h=c.clientHeight||500;
   // Group non-module nodes by module
   const mods=new Map();
-  S.modMeta=new Map(); // module → {cx,cy,radius,color}
+  S.modMeta=new Map();
   for(const n of nodes){
     if(n.type==='module') continue;
     const m=n.module||'other';
     if(!mods.has(m)) mods.set(m,[]);
     mods.get(m).push(n);
   }
+  // Sort by size descending
   const keys=[...mods.keys()].sort((a,b)=>(mods.get(b).length-mods.get(a).length));
   const nMods=keys.length||1;
-  // Module color palette (10 distinct colors, cycle)
   const palette=['#4ecca3','#e94560','#f39c12','#3498db','#9b59b6','#1abc9c','#e67e22','#2ecc71','#e84393','#00cec9'];
-  // Adaptive ring radius
-  const totalMembers=nodes.filter(n=>n.type!=='module').length;
-  const baseRadius=Math.max(300, Math.sqrt(totalMembers)*30);
+  const RING_CAP=24; // max nodes per ring layer
+
+  // Calculate each module's outer radius (for spacing)
+  const modRadii=[];
+  for(let i=0;i<keys.length;i++){
+    const cnt=mods.get(keys[i]).length;
+    const rings=Math.ceil(cnt/RING_CAP);
+    const outerR=rings===1?Math.max(40,cnt*6):rings*32+20;
+    modRadii.push(outerR);
+  }
+
+  // Adaptive base ring: sum of all module diameters / (2*PI) gives minimum perimeter
+  const totalDiam=modRadii.reduce((s,r)=>s+r*2+60,0); // 60px gap between modules
+  const baseRadius=Math.max(400, totalDiam/(Math.PI*2));
+
+  // Place modules with angular spacing proportional to their size
+  const totalWeight=modRadii.reduce((s,r)=>s+r+30,0);
+  let angle=-Math.PI/2;
   for(let i=0;i<keys.length;i++){
     const mn=mods.get(keys[i]); if(!mn)continue;
-    const modAngle=(i/nMods)*Math.PI*2-Math.PI/2;
+    const cnt=mn.length;
+    const col=palette[i%palette.length];
+    const rings=Math.ceil(cnt/RING_CAP);
+    const outerR=modRadii[i];
+
+    // Angular span for this module proportional to its size
+    const span=((outerR+30)/totalWeight)*Math.PI*2;
+    const modAngle=angle+span/2;
+    angle+=span;
+
     const mcx=w/2+Math.cos(modAngle)*baseRadius;
     const mcy=h/2+Math.sin(modAngle)*baseRadius;
-    const subRadius=Math.max(50, Math.sqrt(mn.length)*22);
-    const col=palette[i%palette.length];
-    // Store module meta for cluster rendering
+
     const modNodeId='module:'+keys[i];
     S.nodePos.set(modNodeId,{x:mcx,y:mcy});
-    S.modMeta.set(keys[i],{cx:mcx,cy:mcy,radius:subRadius+30,color:col,count:mn.length});
-    for(let j=0;j<mn.length;j++){
-      const na=(j/mn.length)*Math.PI*2;
-      S.nodePos.set(mn[j].id,{x:mcx+Math.cos(na)*subRadius,y:mcy+Math.sin(na)*subRadius});
+    S.modMeta.set(keys[i],{cx:mcx,cy:mcy,radius:outerR+20,color:col,count:cnt});
+
+    // Spread nodes across concentric rings
+    let placed=0;
+    for(let ring=0;ring<rings;ring++){
+      const nodesInRing=Math.min(RING_CAP,cnt-placed);
+      const r=rings===1?Math.max(40,nodesInRing*6):(ring+1)*32;
+      for(let j=0;j<nodesInRing;j++){
+        const na=(j/nodesInRing)*Math.PI*2;
+        S.nodePos.set(mn[placed].id,{x:mcx+Math.cos(na)*r,y:mcy+Math.sin(na)*r});
+        placed++;
+      }
     }
   }
+
   // Auto-center
   if(nodes.length>0&&!S._userPanned){
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
