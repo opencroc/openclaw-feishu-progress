@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from '../croc-office.js';
+import type { ExecutionRunMode } from '../../execution/types.js';
 
 export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): void {
   // GET /api/agents — list all croc agents
@@ -92,12 +93,17 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
   });
 
   // POST /api/run-tests — execute generated tests with Playwright
-  app.post('/api/run-tests', async (_req, reply) => {
+  app.post<{ Body: { mode?: ExecutionRunMode } }>('/api/run-tests', async (req, reply) => {
     if (office.isRunning()) {
       reply.code(409).send({ error: 'A task is already running' });
       return;
     }
-    office.runTests().catch(() => { /* errors handled internally */ });
+    const mode = req.body?.mode;
+    if (mode && !['auto', 'reuse', 'managed'].includes(mode)) {
+      reply.code(400).send({ error: 'Invalid mode. Valid values: auto, reuse, managed' });
+      return;
+    }
+    office.runTests({ mode }).catch(() => { /* errors handled internally */ });
     return { ok: true, message: 'Test execution started' };
   });
 

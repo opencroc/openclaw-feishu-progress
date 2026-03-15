@@ -1,5 +1,6 @@
 import type { WebSocket } from 'ws';
 import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile, ExecutionMetrics, ReportOutput } from '../types.js';
+import type { ExecutionRunMode } from '../execution/types.js';
 
 export interface CrocAgent {
   id: string;
@@ -308,18 +309,22 @@ export class CrocOffice {
   }
 
   /** Run generated tests with Playwright */
-  async runTests(): Promise<TaskResult> {
+  async runTests(options: { mode?: ExecutionRunMode } = {}): Promise<TaskResult> {
     if (this.running) return { ok: false, task: 'execute', duration: 0, error: 'Another task is running' };
     if (this.lastGeneratedFiles.length === 0) {
       return { ok: false, task: 'execute', duration: 0, error: 'No test files — run Pipeline first' };
     }
     this.running = true;
     const start = Date.now();
+    let cleanupBackend: (() => Promise<void>) | null = null;
 
     try {
       const { resolve: resolvePath } = await import('node:path');
-      const { execSync } = await import('node:child_process');
       const { existsSync } = await import('node:fs');
+      const { createExecutionCoordinator } = await import('../execution/coordinator.js');
+      const { createBackendManager } = await import('../execution/backend-manager.js');
+      const { createRuntimeBootstrap } = await import('../execution/runtime-bootstrap.js');
+      const { categorizeFailure } = await import('../self-healing/index.js');
 
       // Find test files on disk
       const testFiles = this.lastGeneratedFiles
@@ -332,37 +337,43 @@ export class CrocOffice {
       }
 
       // Tester croc runs the tests
-      this.updateAgent('tester-croc', { status: 'working', currentTask: `Running ${testFiles.length} test files...`, progress: 0 });
-      this.log(`🧪 测试鳄 is running ${testFiles.length} Playwright tests...`);
+      const mode = options.mode ?? 'auto';
+      this.updateAgent('tester-croc', { status: 'working', currentTask: `Running ${testFiles.length} test files (${mode})...`, progress: 0 });
+      this.log(`🧪 测试鳄 is running ${testFiles.length} Playwright tests (${mode})...`);
+
+      const runtimeBootstrap = createRuntimeBootstrap(this.config);
+      const runtimeResult = await runtimeBootstrap.ensure({
+        cwd: this.cwd,
+        hasAuth: !!this.config.runtime?.auth?.loginUrl,
+      });
+      if (runtimeResult.writtenFiles.length > 0) {
+        this.log(`🧩 Runtime assets prepared: ${runtimeResult.writtenFiles.join(', ')}`);
+      }
+
+      const backendManager = createBackendManager();
+      const backendReady = await backendManager.ensureReady({
+        mode,
+        cwd: this.cwd,
+        server: this.config.runtime?.server,
+        baseURL: this.config.playwright?.baseURL,
+      });
+      cleanupBackend = backendReady.cleanup;
+      if (backendReady.status === 'started') {
+        this.log(`🚀 Managed backend started (${backendReady.healthUrl})`);
+      } else if (backendReady.status === 'reused') {
+        this.log(`🔁 Reusing backend (${backendReady.healthUrl})`);
+      }
 
       // Healer croc monitors
       this.updateAgent('healer-croc', { status: 'thinking', currentTask: 'Monitoring test run...', progress: 0 });
 
-      let stdout = '', stderr = '';
-      try {
-        const result = execSync(
-          `npx playwright test ${testFiles.map(f => `"${f}"`).join(' ')} --reporter=line 2>&1`,
-          { cwd: this.cwd, encoding: 'utf-8', timeout: 300000, stdio: 'pipe' }
-        );
-        stdout = result;
-      } catch (err: unknown) {
-        // Playwright exits non-zero when tests fail — that's normal
-        const execErr = err as { stdout?: string; stderr?: string };
-        stdout = execErr.stdout || '';
-        stderr = execErr.stderr || '';
-      }
-
-      // Parse metrics from Playwright output
-      const output = stdout + '\n' + stderr;
-      const metrics: ExecutionMetrics = { passed: 0, failed: 0, skipped: 0, timedOut: 0 };
-      const passedMatch = output.match(/(\d+)\s+passed/);
-      const failedMatch = output.match(/(\d+)\s+failed/);
-      const skippedMatch = output.match(/(\d+)\s+skipped/);
-      const timedOutMatch = output.match(/(\d+)\s+timed?\s*out/i);
-      if (passedMatch) metrics.passed = parseInt(passedMatch[1], 10);
-      if (failedMatch) metrics.failed = parseInt(failedMatch[1], 10);
-      if (skippedMatch) metrics.skipped = parseInt(skippedMatch[1], 10);
-      if (timedOutMatch) metrics.timedOut = parseInt(timedOutMatch[1], 10);
+      const coordinator = createExecutionCoordinator({ categorizeFailure });
+      const execResult = await coordinator.run({
+        cwd: this.cwd,
+        testFiles,
+        mode,
+      });
+      const metrics = execResult.metrics;
 
       this.lastExecutionMetrics = metrics;
       const total = metrics.passed + metrics.failed + metrics.skipped + metrics.timedOut;
@@ -372,12 +383,8 @@ export class CrocOffice {
         this.updateAgent('tester-croc', { status: 'error', currentTask: `${metrics.failed} tests failed`, progress: 100 });
         this.updateAgent('healer-croc', { status: 'working', currentTask: `Analyzing ${metrics.failed} failures...`, progress: 50 });
         this.log(`❌ Tests: ${metrics.passed} passed, ${metrics.failed} failed, ${metrics.skipped} skipped`, 'warn');
-        // Classify failures heuristically
-        const { categorizeFailure } = await import('../self-healing/index.js');
-        const failLines = output.split('\n').filter(l => /fail|error|timeout/i.test(l)).slice(0, 5);
-        for (const line of failLines) {
-          const cat = categorizeFailure(line);
-          this.log(`  🔍 ${cat.category} (${Math.round(cat.confidence * 100)}%): ${line.substring(0, 100)}`, 'warn');
+        for (const hint of execResult.failureHints) {
+          this.log(`  🔍 ${hint.category} (${Math.round(hint.confidence * 100)}%): ${hint.line.substring(0, 100)}`, 'warn');
         }
         this.updateAgent('healer-croc', { status: 'done', currentTask: 'Failure analysis done', progress: 100 });
       } else {
@@ -399,6 +406,14 @@ export class CrocOffice {
       this.log(`❌ Test execution failed: ${err}`, 'error');
       return { ok: false, task: 'execute', duration: Date.now() - start, error: String(err) };
     } finally {
+      if (cleanupBackend) {
+        try {
+          await cleanupBackend();
+          this.log('🧹 Managed backend stopped');
+        } catch (err) {
+          this.log(`⚠️ Backend cleanup failed: ${err}`, 'warn');
+        }
+      }
       this.running = false;
     }
   }

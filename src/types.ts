@@ -63,6 +63,15 @@ export interface PlaywrightOverrides {
 }
 
 export interface RuntimeConfig {
+  server?: {
+    command?: string;
+    args?: string[];
+    cwd?: string;
+    healthUrl?: string;
+    startTimeoutMs?: number;
+    pollIntervalMs?: number;
+    reuseExisting?: boolean;
+  };
   /** Authentication strategy */
   auth?: {
     /** Login API URL for credential-based auth */
