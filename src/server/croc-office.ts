@@ -254,38 +254,61 @@ export class CrocOffice {
       const moduleSet = new Set<string>();
 
       // Helper: infer module from file path
-      // 1) If file is in a subfolder under models/ or controllers/ (e.g. models/aigc/Foo.ts → "aigc")
-      // 2) Otherwise, use filename prefix via camelCase split (e.g. appPermissionController → "app")
+      // 1) Subfolder: models/aigc/Foo.ts → "aigc"
+      // 2) Longest known prefix match on filename: workflowTemplate → "workflow"
+      // 3) CamelCase first word: DataModel → "data"
+
+      // Known domain prefixes, longest first for greedy matching
+      const KNOWN_PREFIXES = [
+        'notification', 'department', 'application', 'permission', 'computed',
+        'delegation', 'dictionary', 'validation', 'simulation', 'statistics',
+        'inference', 'panorama', 'designer', 'workflow', 'template', 'relation',
+        'recycle', 'monitor', 'timeout', 'column', 'export', 'import', 'batch',
+        'field', 'chain', 'tenant', 'model', 'data', 'user', 'role', 'menu',
+        'auth', 'dept', 'page', 'app', 'api', 'org', 'log', 'er',
+      ];
+
+      const DOMAIN_GROUPS: Record<string, string> = {
+        app: 'app', api: 'api', data: 'data', auth: 'auth',
+        user: 'user', role: 'user', menu: 'app', dept: 'org',
+        department: 'org', org: 'org', chain: 'workflow',
+        workflow: 'workflow', batch: 'batch', column: 'data',
+        computed: 'data', designer: 'designer', monitor: 'monitor',
+        notification: 'notification', permission: 'permission',
+        template: 'template', validation: 'validation',
+        field: 'data', delegation: 'workflow', import: 'data',
+        export: 'data', dictionary: 'data', panorama: 'panorama',
+        inference: 'inference', simulation: 'simulation', er: 'data',
+        relation: 'data', recycle: 'data', statistics: 'statistics',
+        operation: 'system', log: 'system', timeout: 'workflow',
+        tenant: 'system', model: 'data', page: 'app',
+        application: 'app',
+      };
+
       const inferModule = (filePath: string, type: 'model' | 'controller'): string => {
         const parts = filePath.replace(/\\/g, '/').split('/');
-        // Find the type directory (models or controllers)
+        // Subfolder detection
         const typeDir = type === 'model' ? 'models' : 'controllers';
         const typeDirIdx = parts.indexOf(typeDir);
         if (typeDirIdx >= 0 && parts.length - typeDirIdx > 2) {
-          // File is in a subfolder: models/aigc/Foo.ts → "aigc"
           return parts[typeDirIdx + 1];
         }
-        // Infer from filename prefix: DataModel.ts → "data", appPermission.ts → "app"
-        const baseName = parts[parts.length - 1].replace(/\.(ts|js)$/, '').replace(/Controller$/, '');
-        const prefixMatch = baseName.match(/^([a-z]+)/i);
-        if (prefixMatch) {
-          const prefix = prefixMatch[1].toLowerCase();
-          // Merge very short prefixes into broader groups
-          const groupMap: Record<string, string> = {
-            app: 'app', api: 'api', data: 'data', auth: 'auth',
-            user: 'user', role: 'role', menu: 'menu', dept: 'org',
-            department: 'org', org: 'org', chain: 'workflow',
-            workflow: 'workflow', batch: 'batch', column: 'data',
-            computed: 'data', designer: 'designer', monitor: 'monitor',
-            notification: 'notification', permission: 'permission',
-            template: 'template', validation: 'validation',
-            field: 'field', delegation: 'workflow', import: 'import-export',
-            export: 'import-export', dictionary: 'data', panorama: 'panorama',
-            inference: 'inference', simulation: 'simulation', er: 'data',
-            relation: 'data', recycle: 'data', statistics: 'statistics',
-            operation: 'log', log: 'log', timeout: 'workflow',
-          };
-          return groupMap[prefix] || prefix;
+        // Filename-based: strip extension + "Controller" suffix
+        const baseName = parts[parts.length - 1]
+          .replace(/\.(ts|js)$/, '')
+          .replace(/Controller$/i, '');
+        const lc = baseName.toLowerCase();
+        // Try longest known prefix match
+        for (const prefix of KNOWN_PREFIXES) {
+          if (lc.startsWith(prefix)) {
+            return DOMAIN_GROUPS[prefix] || prefix;
+          }
+        }
+        // CamelCase first word fallback
+        const camelMatch = baseName.match(/^([A-Z]?[a-z]+)/);
+        if (camelMatch) {
+          const w = camelMatch[1].toLowerCase();
+          return DOMAIN_GROUPS[w] || w;
         }
         return 'other';
       };
