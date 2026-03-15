@@ -45,12 +45,12 @@ export interface GenerateConfigResult {
 
 export function recoverJSON(text: string): string {
   // Direct parse
-  try { JSON.parse(text.trim()); return text.trim(); } catch {}
+  try { JSON.parse(text.trim()); return text.trim(); } catch { /* recovery fallthrough */ }
 
   // Markdown code block
   const codeBlock = text.match(/```(?:json|javascript|ts)?\s*\n?([\s\S]*?)\n?\s*```/);
   if (codeBlock) {
-    try { JSON.parse(codeBlock[1].trim()); return codeBlock[1].trim(); } catch {}
+    try { JSON.parse(codeBlock[1].trim()); return codeBlock[1].trim(); } catch { /* recovery fallthrough */ }
   }
 
   // Extract outermost {} or []
@@ -76,7 +76,7 @@ export function recoverJSON(text: string): string {
   }
 
   // Fix trailing commas + unquoted keys + single quotes
-  let cleaned = text.trim()
+  const cleaned = text.trim()
     .replace(/^```(?:json|javascript|ts)?\s*\n?/m, '')
     .replace(/\n?\s*```\s*$/m, '')
     .trim()
@@ -84,7 +84,7 @@ export function recoverJSON(text: string): string {
     .replace(/([{,]\s*)(\w+)\s*:/g, (_m, prefix, key) => `${prefix}"${key}":`)
     .replace(/'/g, '"');
 
-  try { JSON.parse(cleaned); return cleaned; } catch {}
+  try { JSON.parse(cleaned); return cleaned; } catch { /* recovery fallthrough */ }
 
   throw new Error('JSON recovery failed: unable to extract valid JSON from AI response');
 }

@@ -65,7 +65,7 @@ function findMostSimilarEndpoint(method: string, brokenPath: string, endpoints: 
 }
 
 function segmentToIdName(segment: string): string {
-  let clean = segment.replace(/^aigc-/, '');
+  const clean = segment.replace(/^aigc-/, '');
   const parts = clean.split('-');
   if (parts.length === 1) return parts[0].replace(/s$/, '') + 'Id';
   return parts.map((p) => p[0]).join('') + 'Id';

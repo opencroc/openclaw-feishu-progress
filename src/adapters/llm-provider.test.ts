@@ -23,6 +23,7 @@ describe('LLM Provider Factory', () => {
   });
 
   it('throws for unknown provider', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => createLlmProvider({ provider: 'unknown' as any })).toThrow('Unknown LLM provider');
   });
 });

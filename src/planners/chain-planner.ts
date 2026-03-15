@@ -149,13 +149,12 @@ function crudFullCycleTemplate(): ChainTemplate {
       if (!post) return null;
 
       const steps: TestStep[] = [];
-      let o = 1;
       const pk = 'step_1';
-      steps.push(createStep(o++, post, 'create'));
-      if (getD) steps.push(createStep(o++, getD, 'read', pk));
-      if (put) steps.push(createStep(o++, put, 'update', pk));
-      if (getD) steps.push(createStep(o++, getD, 'verify', pk));
-      if (del) steps.push(createStep(o++, del, 'delete', pk));
+      steps.push(createStep(steps.length + 1, post, 'create'));
+      if (getD) steps.push(createStep(steps.length + 1, getD, 'read', pk));
+      if (put) steps.push(createStep(steps.length + 1, put, 'update', pk));
+      if (getD) steps.push(createStep(steps.length + 1, getD, 'verify', pk));
+      if (del) steps.push(createStep(steps.length + 1, del, 'delete', pk));
 
       return {
         name: `${name}-crud-full-cycle`,
@@ -204,12 +203,11 @@ function nestedResourceTemplate(): ChainTemplate {
       if (!parentPost || !childPost) return null;
 
       const steps: TestStep[] = [];
-      let o = 1;
-      steps.push(createStep(o++, parentPost, 'setup'));
-      steps.push(createStep(o++, childPost, 'create', 'step_1'));
-      if (childGet) steps.push(createStep(o++, childGet, 'read', 'step_2'));
-      if (childDel) steps.push(createStep(o++, childDel, 'cleanup', 'step_2'));
-      if (parentDel) steps.push(createStep(o++, parentDel, 'cleanup', 'step_1'));
+      steps.push(createStep(steps.length + 1, parentPost, 'setup'));
+      steps.push(createStep(steps.length + 1, childPost, 'create', 'step_1'));
+      if (childGet) steps.push(createStep(steps.length + 1, childGet, 'read', 'step_2'));
+      if (childDel) steps.push(createStep(steps.length + 1, childDel, 'cleanup', 'step_2'));
+      if (parentDel) steps.push(createStep(steps.length + 1, parentDel, 'cleanup', 'step_1'));
 
       return {
         name: `${name}-nested-resource`,
@@ -275,10 +273,9 @@ function topoOrderTemplate(): ChainTemplate {
       if (topo.length === 0) return null;
       const epMap = new Map(endpoints.map((ep) => [endpointKey(ep), ep]));
       const steps: TestStep[] = [];
-      let o = 1;
       for (const key of topo.slice(0, 6)) {
         const ep = epMap.get(key);
-        if (ep) steps.push(createStep(o++, ep, inferAction(ep)));
+        if (ep) steps.push(createStep(steps.length + 1, ep, inferAction(ep)));
       }
       if (steps.length === 0) return null;
       return {
