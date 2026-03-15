@@ -296,13 +296,23 @@ export default defineConfig({
 - [x] NestJS controller parser
 - [x] Visual dashboard (opencroc.com)
 - [x] Drizzle ORM adapter
+- [x] AI Config Suggester + Enhanced DTO-aware Suggester
+- [x] Auto-Fixer（4 策略：接口路径匹配、DTO 字段填充、种子依赖排序、参数映射修复）
+- [x] 三层配置验证（schema → semantic → dry-run）
+- [x] DTO Parser（ts-morph 接口解析 + express-validator 规则提取）
+- [x] Baseline Comparator（Playwright 报告 diff + 回归检测）
+- [x] 模块配置预设加载器
+- [x] LLM 增强链路规划器
+- [x] Runtime 基础设施（Playwright 配置生成、认证 Setup、Teardown、网络监控）
+- [x] 全流程编排管道
+- [x] 高级报告系统（检查清单、工单生成、Token 追踪）
 
 ## 发布快照
 
-- 当前稳定版本：`0.6.1`
-- npm `latest` 标签：`0.6.1`
+- 当前稳定版本：`1.2.0`
+- npm `latest` 标签：`1.2.0`
 - Roadmap 状态：已全部完成
-- 全量质量门禁：Windows 下 23 个测试文件 / 184 个测试稳定通过
+- 全量质量门禁：32 个测试文件 / 365 个测试通过（Node.js 20.x & 22.x）
 
 ### 版本节奏
 
@@ -310,6 +320,10 @@ export default defineConfig({
 - `0.4.x`：NestJS 控制器解析
 - `0.5.x`：Drizzle ORM 适配器
 - `0.6.x`：可视化 dashboard 与 Windows 下 Vitest 稳定性收口
+- `0.7.x – 0.9.x`：Runtime 基础设施（Playwright 生成器、认证、日志驱动检测、规则引擎）
+- `1.0.0`：全流程编排管道
+- `1.1.0`：高级自愈（对话循环、可控修复器、自动修复 PR 生成）
+- `1.2.0`：高级报告系统 + Sprint 0-3 迁移完成
 
 ### 发布验证
 

@@ -299,13 +299,23 @@ export default defineConfig({
 - [x] NestJS controller parser
 - [x] Visual dashboard (opencroc.com)
 - [x] Drizzle ORM adapter
+- [x] AI Config Suggester + Enhanced DTO-aware Suggester
+- [x] Auto-Fixer (4 strategies: interface-path, DTO field, seed dependency, param mapping)
+- [x] 3-layer config validation (schema → semantic → dry-run)
+- [x] DTO Parser (ts-morph interface + express-validator extraction)
+- [x] Baseline Comparator (Playwright report diff + regression detection)
+- [x] Module config preset loader
+- [x] LLM-enhanced chain planner
+- [x] Runtime infrastructure (Playwright config, auth setup, teardown, network monitor)
+- [x] Full orchestration pipeline
+- [x] Advanced reporters (checklist, workorder, token tracking)
 
 ## Release Snapshot
 
-- Current stable release: `0.6.1`
-- npm dist-tag `latest`: `0.6.1`
+- Current stable release: `1.2.0`
+- npm dist-tag `latest`: `1.2.0`
 - Roadmap status: fully completed
-- Full-suite quality gate: 23 test files / 184 tests passing on Windows with stable Vitest config
+- Full-suite quality gate: 32 test files / 365 tests passing on Node.js 20.x & 22.x
 
 ### Version Rhythm
 
@@ -313,6 +323,10 @@ export default defineConfig({
 - `0.4.x`: NestJS controller parser
 - `0.5.x`: Drizzle ORM adapter
 - `0.6.x`: visual dashboard + Windows Vitest stability hardening
+- `0.7.x – 0.9.x`: runtime infrastructure (Playwright generators, auth, log-driven detection, rules engine)
+- `1.0.0`: full orchestration pipeline
+- `1.1.0`: advanced self-healing (dialog loop, controlled fixer, auto-fix PR generation)
+- `1.2.0`: advanced reporters (checklist, workorder, token tracking) + Sprint 0-3 migration complete
 
 ### Release Verification
 

@@ -2,7 +2,7 @@
 
 > 迁移源：`tests/e2e-ai/dynamic-gen/`
 > 迁移目标：`opencroc/src/`
-> 状态：骨架已搭建，所有核心函数为空壳 `throw Error`
+> **状态：✅ 全部完成（4 个 Sprint、22 个任务）— 2026-03-15**
 
 ---
 

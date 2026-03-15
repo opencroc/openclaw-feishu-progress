@@ -296,6 +296,16 @@ export default defineConfig({
 - [x] NestJS controller parser
 - [x] Visual dashboard (opencroc.com)
 - [x] Drizzle ORM adapter
+- [x] AI Config Suggester + Enhanced DTO-aware Suggester
+- [x] Auto-Fixer (4 strategies: interface-path, DTO field, seed dependency, param mapping)
+- [x] 3-layer config validation (schema → semantic → dry-run)
+- [x] DTO Parser (ts-morph interface + express-validator extraction)
+- [x] Baseline Comparator (Playwright report diff + regression detection)
+- [x] Module config preset loader
+- [x] LLM-enhanced chain planner
+- [x] Runtime infrastructure (Playwright config, auth setup, teardown, network monitor)
+- [x] Full orchestration pipeline
+- [x] Advanced reporters (checklist, workorder, token tracking)
 
 ## ドキュメント
 
