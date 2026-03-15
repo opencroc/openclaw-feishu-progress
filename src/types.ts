@@ -259,6 +259,21 @@ export interface PipelineRunResult {
   duration: number;
 }
 
+// ===== Execution & Report Types =====
+
+export interface ExecutionMetrics {
+  passed: number;
+  failed: number;
+  skipped: number;
+  timedOut: number;
+}
+
+export interface ReportOutput {
+  format: 'html' | 'json' | 'markdown';
+  content: string;
+  filename: string;
+}
+
 export interface ChainFailureResult {
   chain: string;
   failedStep: number;

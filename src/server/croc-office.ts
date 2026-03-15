@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile } from '../types.js';
+import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile, ExecutionMetrics, ReportOutput } from '../types.js';
 
 export interface CrocAgent {
   id: string;
@@ -72,6 +72,8 @@ export class CrocOffice {
   private running = false;
   private lastPipelineResult: PipelineRunResult | null = null;
   private lastGeneratedFiles: GeneratedTestFile[] = [];
+  private lastExecutionMetrics: ExecutionMetrics | null = null;
+  private lastReports: ReportOutput[] = [];
 
   constructor(config: OpenCrocConfig, cwd: string) {
     this.config = config;
@@ -293,6 +295,163 @@ export class CrocOffice {
   /** Get generated test files from last pipeline run */
   getGeneratedFiles(): GeneratedTestFile[] {
     return this.lastGeneratedFiles;
+  }
+
+  /** Get last execution metrics */
+  getLastExecutionMetrics(): ExecutionMetrics | null {
+    return this.lastExecutionMetrics;
+  }
+
+  /** Get last generated reports */
+  getLastReports(): ReportOutput[] {
+    return this.lastReports;
+  }
+
+  /** Run generated tests with Playwright */
+  async runTests(): Promise<TaskResult> {
+    if (this.running) return { ok: false, task: 'execute', duration: 0, error: 'Another task is running' };
+    if (this.lastGeneratedFiles.length === 0) {
+      return { ok: false, task: 'execute', duration: 0, error: 'No test files — run Pipeline first' };
+    }
+    this.running = true;
+    const start = Date.now();
+
+    try {
+      const { resolve: resolvePath } = await import('node:path');
+      const { execSync } = await import('node:child_process');
+      const { existsSync } = await import('node:fs');
+
+      // Find test files on disk
+      const testFiles = this.lastGeneratedFiles
+        .map(f => resolvePath(this.cwd, f.filePath))
+        .filter(f => existsSync(f));
+
+      if (testFiles.length === 0) {
+        this.log('⚠️ No test files found on disk', 'warn');
+        return { ok: false, task: 'execute', duration: Date.now() - start, error: 'No test files found on disk' };
+      }
+
+      // Tester croc runs the tests
+      this.updateAgent('tester-croc', { status: 'working', currentTask: `Running ${testFiles.length} test files...`, progress: 0 });
+      this.log(`🧪 测试鳄 is running ${testFiles.length} Playwright tests...`);
+
+      // Healer croc monitors
+      this.updateAgent('healer-croc', { status: 'thinking', currentTask: 'Monitoring test run...', progress: 0 });
+
+      let stdout = '', stderr = '';
+      try {
+        const result = execSync(
+          `npx playwright test ${testFiles.map(f => `"${f}"`).join(' ')} --reporter=line 2>&1`,
+          { cwd: this.cwd, encoding: 'utf-8', timeout: 300000, stdio: 'pipe' }
+        );
+        stdout = result;
+      } catch (err: unknown) {
+        // Playwright exits non-zero when tests fail — that's normal
+        const execErr = err as { stdout?: string; stderr?: string };
+        stdout = execErr.stdout || '';
+        stderr = execErr.stderr || '';
+      }
+
+      // Parse metrics from Playwright output
+      const output = stdout + '\n' + stderr;
+      const metrics: ExecutionMetrics = { passed: 0, failed: 0, skipped: 0, timedOut: 0 };
+      const passedMatch = output.match(/(\d+)\s+passed/);
+      const failedMatch = output.match(/(\d+)\s+failed/);
+      const skippedMatch = output.match(/(\d+)\s+skipped/);
+      const timedOutMatch = output.match(/(\d+)\s+timed?\s*out/i);
+      if (passedMatch) metrics.passed = parseInt(passedMatch[1], 10);
+      if (failedMatch) metrics.failed = parseInt(failedMatch[1], 10);
+      if (skippedMatch) metrics.skipped = parseInt(skippedMatch[1], 10);
+      if (timedOutMatch) metrics.timedOut = parseInt(timedOutMatch[1], 10);
+
+      this.lastExecutionMetrics = metrics;
+      const total = metrics.passed + metrics.failed + metrics.skipped + metrics.timedOut;
+
+      // Update croc states
+      if (metrics.failed > 0) {
+        this.updateAgent('tester-croc', { status: 'error', currentTask: `${metrics.failed} tests failed`, progress: 100 });
+        this.updateAgent('healer-croc', { status: 'working', currentTask: `Analyzing ${metrics.failed} failures...`, progress: 50 });
+        this.log(`❌ Tests: ${metrics.passed} passed, ${metrics.failed} failed, ${metrics.skipped} skipped`, 'warn');
+        // Classify failures heuristically
+        const { categorizeFailure } = await import('../self-healing/index.js');
+        const failLines = output.split('\n').filter(l => /fail|error|timeout/i.test(l)).slice(0, 5);
+        for (const line of failLines) {
+          const cat = categorizeFailure(line);
+          this.log(`  🔍 ${cat.category} (${Math.round(cat.confidence * 100)}%): ${line.substring(0, 100)}`, 'warn');
+        }
+        this.updateAgent('healer-croc', { status: 'done', currentTask: 'Failure analysis done', progress: 100 });
+      } else {
+        this.updateAgent('tester-croc', { status: 'done', currentTask: `All ${metrics.passed} tests passed!`, progress: 100 });
+        this.updateAgent('healer-croc', { status: 'done', currentTask: 'No failures', progress: 100 });
+        this.log(`✅ All ${metrics.passed} tests passed!`);
+      }
+
+      this.updateNodeStatus('controller', metrics.failed > 0 ? 'failed' : 'passed');
+
+      // Broadcast results
+      this.broadcast('test:complete', { metrics, total });
+
+      const duration = Date.now() - start;
+      this.log(`🧪 Test execution complete in ${duration}ms`);
+      return { ok: metrics.failed === 0, task: 'execute', duration, details: metrics as unknown as Record<string, unknown> };
+    } catch (err) {
+      this.updateAgent('tester-croc', { status: 'error', currentTask: String(err) });
+      this.log(`❌ Test execution failed: ${err}`, 'error');
+      return { ok: false, task: 'execute', duration: Date.now() - start, error: String(err) };
+    } finally {
+      this.running = false;
+    }
+  }
+
+  /** Generate reports (HTML/JSON/Markdown) */
+  async generateReport(): Promise<TaskResult> {
+    if (this.running) return { ok: false, task: 'report', duration: 0, error: 'Another task is running' };
+    if (!this.lastPipelineResult) {
+      return { ok: false, task: 'report', duration: 0, error: 'No pipeline result — run Pipeline first' };
+    }
+    this.running = true;
+    const start = Date.now();
+
+    try {
+      this.updateAgent('reporter-croc', { status: 'working', currentTask: 'Generating reports...', progress: 0 });
+      this.log('📊 汇报鳄 is generating reports...');
+
+      const { generateReports } = await import('../reporters/index.js');
+      const formats: ('html' | 'json' | 'markdown')[] = ['html', 'json', 'markdown'];
+      const reports = generateReports(this.lastPipelineResult, formats);
+      this.lastReports = reports;
+
+      // Write reports to disk
+      const { resolve: resolvePath } = await import('node:path');
+      const { writeFileSync, mkdirSync } = await import('node:fs');
+      const outDir = resolvePath(this.cwd, this.config.outDir || './opencroc-output');
+      mkdirSync(outDir, { recursive: true });
+
+      for (const report of reports) {
+        const fullPath = resolvePath(outDir, report.filename);
+        writeFileSync(fullPath, report.content, 'utf-8');
+        this.log(`📄 Generated ${report.format} report: ${report.filename}`);
+      }
+
+      this.updateAgent('reporter-croc', { status: 'done', currentTask: `${reports.length} reports generated`, progress: 100 });
+
+      // Broadcast reports to frontend
+      this.broadcast('reports:generated', reports.map(r => ({
+        format: r.format,
+        filename: r.filename,
+        size: r.content.length,
+      })));
+
+      const duration = Date.now() - start;
+      this.log(`✅ Reports generated in ${duration}ms`);
+      return { ok: true, task: 'report', duration, details: { count: reports.length } };
+    } catch (err) {
+      this.updateAgent('reporter-croc', { status: 'error', currentTask: String(err) });
+      this.log(`❌ Report generation failed: ${err}`, 'error');
+      return { ok: false, task: 'report', duration: Date.now() - start, error: String(err) };
+    } finally {
+      this.running = false;
+    }
   }
 
   // ============ Graph Helpers ============

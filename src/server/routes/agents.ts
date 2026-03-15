@@ -90,4 +90,70 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
       duration: result.duration,
     };
   });
+
+  // POST /api/run-tests — execute generated tests with Playwright
+  app.post('/api/run-tests', async (_req, reply) => {
+    if (office.isRunning()) {
+      reply.code(409).send({ error: 'A task is already running' });
+      return;
+    }
+    office.runTests().catch(() => { /* errors handled internally */ });
+    return { ok: true, message: 'Test execution started' };
+  });
+
+  // GET /api/test-results — last test execution metrics
+  app.get('/api/test-results', async () => {
+    const metrics = office.getLastExecutionMetrics();
+    if (!metrics) return { ok: false, message: 'No tests have been run yet' };
+    const total = metrics.passed + metrics.failed + metrics.skipped + metrics.timedOut;
+    return { ok: true, metrics, total };
+  });
+
+  // POST /api/reports/generate — generate reports from last pipeline result
+  app.post('/api/reports/generate', async (_req, reply) => {
+    if (office.isRunning()) {
+      reply.code(409).send({ error: 'A task is already running' });
+      return;
+    }
+    office.generateReport().catch(() => { /* errors handled internally */ });
+    return { ok: true, message: 'Report generation started' };
+  });
+
+  // GET /api/reports — list last generated reports
+  app.get('/api/reports', async () => {
+    const reports = office.getLastReports();
+    if (reports.length === 0) return { ok: false, message: 'No reports generated yet' };
+    return {
+      ok: true,
+      reports: reports.map(r => ({
+        format: r.format,
+        filename: r.filename,
+        size: r.content.length,
+      })),
+    };
+  });
+
+  // GET /api/reports/:format — get report content by format (html|json|markdown)
+  app.get<{ Params: { format: string } }>('/api/reports/:format', async (req, reply) => {
+    const reports = office.getLastReports();
+    const report = reports.find(r => r.format === req.params.format);
+    if (!report) {
+      reply.code(404).send({ error: `No ${req.params.format} report found` });
+      return;
+    }
+    const contentType = req.params.format === 'html' ? 'text/html'
+      : req.params.format === 'json' ? 'application/json'
+      : 'text/markdown';
+    reply.type(contentType).send(report.content);
+  });
+
+  // GET /api/ci/template — generate CI config template
+  app.get<{ Querystring: { provider?: string } }>('/api/ci/template', async (req) => {
+    const provider = req.query.provider || 'github';
+    const { generateGitHubActionsTemplate, generateGitLabCITemplate } = await import('../../ci/index.js');
+    if (provider === 'gitlab') {
+      return { ok: true, provider: 'gitlab', template: generateGitLabCITemplate() };
+    }
+    return { ok: true, provider: 'github', template: generateGitHubActionsTemplate() };
+  });
 }
