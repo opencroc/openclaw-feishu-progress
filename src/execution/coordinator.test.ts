@@ -2,7 +2,7 @@
  * @Author: wangchunji
  * @Date: 2026-03-15 23:22:51
  * @LastEditors: wangchunji
- * @LastEditTime: 2026-03-15 23:32:48
+ * @LastEditTime: 2026-03-15 23:53:30
  * @Description: 
  */
 import { describe, expect, it, vi } from 'vitest';
@@ -71,5 +71,24 @@ describe('createExecutionCoordinator', () => {
       skipped: 0,
       timedOut: 0,
     });
+  });
+
+  it('passes provided env to playwright process', async () => {
+    const execSync = vi.fn().mockReturnValue('1 passed\n');
+    const coordinator = createExecutionCoordinator({ execSync });
+    const env = { BASE_URL: 'http://localhost:3000', AUTH_USERNAME: 'admin' };
+
+    await coordinator.run({
+      cwd: '/tmp',
+      testFiles: ['a.spec.ts'],
+      env,
+    });
+
+    expect(execSync).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        env,
+      }),
+    );
   });
 });

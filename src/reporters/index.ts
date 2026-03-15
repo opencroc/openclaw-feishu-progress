@@ -4,7 +4,9 @@ import type {
   ChainPlanResult,
   GeneratedTestFile,
   ValidationError,
+  ExecutionMetrics,
 } from '../types.js';
+import type { ExecutionQualityGateResult } from '../execution/types.js';
 
 // ===== Reporter Types =====
 
@@ -14,9 +16,17 @@ export interface ReportOutput {
   filename: string;
 }
 
+export interface ReportExecutionContext {
+  metrics?: ExecutionMetrics | null;
+  quality?: ExecutionQualityGateResult | null;
+}
+
 // ===== JSON Reporter =====
 
-export function generateJsonReport(result: PipelineRunResult): ReportOutput {
+export function generateJsonReport(
+  result: PipelineRunResult,
+  context?: ReportExecutionContext,
+): ReportOutput {
   const serializable = {
     modules: result.modules,
     erDiagrams: Object.fromEntries(
@@ -36,6 +46,12 @@ export function generateJsonReport(result: PipelineRunResult): ReportOutput {
       module: f.module,
       chain: f.chain,
     })),
+    execution: context
+      ? {
+          metrics: context.metrics ?? null,
+          quality: context.quality ?? null,
+        }
+      : undefined,
     validationErrors: result.validationErrors,
     duration: result.duration,
   };
@@ -49,7 +65,10 @@ export function generateJsonReport(result: PipelineRunResult): ReportOutput {
 
 // ===== Markdown Reporter =====
 
-export function generateMarkdownReport(result: PipelineRunResult): ReportOutput {
+export function generateMarkdownReport(
+  result: PipelineRunResult,
+  context?: ReportExecutionContext,
+): ReportOutput {
   const lines: string[] = [
     '# OpenCroc Report',
     '',
@@ -94,6 +113,32 @@ export function generateMarkdownReport(result: PipelineRunResult): ReportOutput 
       lines.push(`### Warnings (${warnings.length})`, '');
       for (const w of warnings) {
         lines.push(`- **[${w.module}]** ${w.field}: ${w.message}`);
+      }
+    }
+  }
+
+  if (context?.metrics || context?.quality) {
+    lines.push('', '## Execution Quality', '');
+    if (context.metrics) {
+      lines.push(
+        `- Passed: ${context.metrics.passed}`,
+        `- Failed: ${context.metrics.failed}`,
+        `- Skipped: ${context.metrics.skipped}`,
+        `- TimedOut: ${context.metrics.timedOut}`,
+      );
+    }
+    if (context.quality) {
+      lines.push(
+        `- Gate Level: ${context.quality.level}`,
+        `- Setup Fail: ${context.quality.setupFail}`,
+        `- Skip Ratio: ${(context.quality.skipRatio * 100).toFixed(2)}%`,
+        `- Auth Fail Ratio: ${(context.quality.authFailRatio * 100).toFixed(2)}%`,
+        `- Effective Execution Rate: ${(context.quality.effectiveExecutionRate * 100).toFixed(2)}%`,
+        `- Auth Status: ${context.quality.authStatus}`,
+        `- Backend Status: ${context.quality.backendStatus}`,
+      );
+      if (context.quality.reasons.length > 0) {
+        lines.push(`- Reasons: ${context.quality.reasons.join(', ')}`);
       }
     }
   }
@@ -144,7 +189,10 @@ function validationRows(errors: ValidationError[]): string {
     .join('\n');
 }
 
-export function generateHtmlReport(result: PipelineRunResult): ReportOutput {
+export function generateHtmlReport(
+  result: PipelineRunResult,
+  context?: ReportExecutionContext,
+): ReportOutput {
   const totalTables = Array.from(result.erDiagrams.values()).reduce((s, e) => s + e.tables.length, 0);
   const totalRelations = Array.from(result.erDiagrams.values()).reduce((s, e) => s + e.relations.length, 0);
   const totalChains = Array.from(result.chainPlans.values()).reduce((s, p) => s + p.chains.length, 0);
@@ -225,6 +273,21 @@ export function generateHtmlReport(result: PipelineRunResult): ReportOutput {
 </section>
 
 ${
+  context?.quality || context?.metrics
+    ? `<section>
+<h2>Execution Quality</h2>
+<table>
+<thead><tr><th>Item</th><th>Value</th></tr></thead>
+<tbody>
+${context.metrics ? `<tr><td>Passed</td><td>${context.metrics.passed}</td></tr><tr><td>Failed</td><td>${context.metrics.failed}</td></tr><tr><td>Skipped</td><td>${context.metrics.skipped}</td></tr><tr><td>TimedOut</td><td>${context.metrics.timedOut}</td></tr>` : ''}
+${context.quality ? `<tr><td>Gate Level</td><td>${escapeHtml(context.quality.level)}</td></tr><tr><td>Setup Fail</td><td>${String(context.quality.setupFail)}</td></tr><tr><td>Skip Ratio</td><td>${(context.quality.skipRatio * 100).toFixed(2)}%</td></tr><tr><td>Auth Fail Ratio</td><td>${(context.quality.authFailRatio * 100).toFixed(2)}%</td></tr><tr><td>Effective Execution Rate</td><td>${(context.quality.effectiveExecutionRate * 100).toFixed(2)}%</td></tr><tr><td>Auth Status</td><td>${escapeHtml(context.quality.authStatus)}</td></tr><tr><td>Backend Status</td><td>${escapeHtml(context.quality.backendStatus)}</td></tr><tr><td>Reasons</td><td>${escapeHtml(context.quality.reasons.join(', ') || '-')}</td></tr>` : ''}
+</tbody>
+</table>
+</section>`
+    : ''
+}
+
+${
   result.validationErrors.length > 0
     ? `<section>
 <h2>Validation Issues (${result.validationErrors.length})</h2>
@@ -251,7 +314,7 @@ ${
 
 // ===== Report Orchestrator =====
 
-const REPORTERS: Record<string, (result: PipelineRunResult) => ReportOutput> = {
+const REPORTERS: Record<string, (result: PipelineRunResult, context?: ReportExecutionContext) => ReportOutput> = {
   html: generateHtmlReport,
   json: generateJsonReport,
   markdown: generateMarkdownReport,
@@ -263,11 +326,12 @@ const REPORTERS: Record<string, (result: PipelineRunResult) => ReportOutput> = {
 export function generateReports(
   result: PipelineRunResult,
   formats: ('html' | 'json' | 'markdown')[] = ['html'],
+  context?: ReportExecutionContext,
 ): ReportOutput[] {
   return formats.map((fmt) => {
     const gen = REPORTERS[fmt];
     if (!gen) throw new Error(`Unknown report format: "${fmt}". Available: ${Object.keys(REPORTERS).join(', ')}`);
-    return gen(result);
+    return gen(result, context);
   });
 }
 

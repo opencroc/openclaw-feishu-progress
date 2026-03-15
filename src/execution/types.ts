@@ -13,6 +13,7 @@ export interface ExecutionRunRequest {
   testFiles: string[];
   mode?: ExecutionRunMode;
   timeoutMs?: number;
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface ExecutionRunResult {
@@ -27,7 +28,10 @@ export interface ExecutionCoordinator {
 }
 
 export interface ExecutionCoordinatorDeps {
-  execSync?: (command: string, options: { cwd: string; encoding: 'utf-8'; timeout: number; stdio: 'pipe' }) => string;
+  execSync?: (
+    command: string,
+    options: { cwd: string; encoding: 'utf-8'; timeout: number; stdio: 'pipe'; env?: NodeJS.ProcessEnv },
+  ) => string;
   categorizeFailure?: (line: string) => { category: string; confidence: number };
 }
 
@@ -88,4 +92,31 @@ export interface RuntimeBootstrapResult {
 
 export interface RuntimeBootstrap {
   ensure(request: RuntimeBootstrapRequest): Promise<RuntimeBootstrapResult>;
+}
+
+export interface AuthProvisionResult {
+  status: 'skipped' | 'ready';
+  env: NodeJS.ProcessEnv;
+}
+
+export interface AuthProvisioner {
+  provision(): Promise<AuthProvisionResult>;
+}
+
+export interface AuthProvisionerDeps {
+  fetchFn?: typeof fetch;
+}
+
+export type AuthStatus = 'skipped' | 'ready' | 'failed';
+export type BackendStatus = 'reused' | 'started' | 'skipped' | 'failed';
+
+export interface ExecutionQualityGateResult {
+  setupFail: boolean;
+  skipRatio: number;
+  authFailRatio: number;
+  effectiveExecutionRate: number;
+  level: 'pass' | 'warn' | 'fail';
+  reasons: string[];
+  authStatus: AuthStatus;
+  backendStatus: BackendStatus;
 }

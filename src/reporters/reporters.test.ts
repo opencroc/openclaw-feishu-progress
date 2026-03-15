@@ -53,6 +53,25 @@ describe('Reporters', () => {
       expect(parsed.erDiagrams.default.relations).toBe(1);
       expect(parsed.chainPlans.default.chains).toBe(1);
     });
+
+    it('should include execution context when provided', () => {
+      const report = generateJsonReport(result, {
+        metrics: { passed: 4, failed: 1, skipped: 0, timedOut: 0 },
+        quality: {
+          setupFail: false,
+          skipRatio: 0,
+          authFailRatio: 0,
+          effectiveExecutionRate: 0.8,
+          level: 'warn',
+          reasons: ['tests-failed'],
+          authStatus: 'ready',
+          backendStatus: 'reused',
+        },
+      });
+      const parsed = JSON.parse(report.content);
+      expect(parsed.execution.metrics.passed).toBe(4);
+      expect(parsed.execution.quality.level).toBe('warn');
+    });
   });
 
   describe('generateMarkdownReport', () => {
@@ -66,6 +85,24 @@ describe('Reporters', () => {
       expect(report.content).toContain('## Generated Files');
       expect(report.content).toContain('## Validation Issues');
       expect(report.content).toContain('Path not found');
+    });
+
+    it('should include execution quality section when context exists', () => {
+      const report = generateMarkdownReport(result, {
+        metrics: { passed: 5, failed: 0, skipped: 1, timedOut: 0 },
+        quality: {
+          setupFail: false,
+          skipRatio: 1 / 6,
+          authFailRatio: 0,
+          effectiveExecutionRate: 5 / 6,
+          level: 'pass',
+          reasons: [],
+          authStatus: 'ready',
+          backendStatus: 'reused',
+        },
+      });
+      expect(report.content).toContain('## Execution Quality');
+      expect(report.content).toContain('Gate Level: pass');
     });
   });
 

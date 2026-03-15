@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws';
 import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile, ExecutionMetrics, ReportOutput } from '../types.js';
-import type { ExecutionRunMode } from '../execution/types.js';
+import type { BackendStatus, ExecutionQualityGateResult, ExecutionRunMode, AuthStatus } from '../execution/types.js';
 
 export interface CrocAgent {
   id: string;
@@ -74,6 +74,7 @@ export class CrocOffice {
   private lastPipelineResult: PipelineRunResult | null = null;
   private lastGeneratedFiles: GeneratedTestFile[] = [];
   private lastExecutionMetrics: ExecutionMetrics | null = null;
+  private lastExecutionQuality: ExecutionQualityGateResult | null = null;
   private lastReports: ReportOutput[] = [];
 
   constructor(config: OpenCrocConfig, cwd: string) {
@@ -303,6 +304,10 @@ export class CrocOffice {
     return this.lastExecutionMetrics;
   }
 
+  getLastExecutionQuality(): ExecutionQualityGateResult | null {
+    return this.lastExecutionQuality;
+  }
+
   /** Get last generated reports */
   getLastReports(): ReportOutput[] {
     return this.lastReports;
@@ -317,6 +322,8 @@ export class CrocOffice {
     this.running = true;
     const start = Date.now();
     let cleanupBackend: (() => Promise<void>) | null = null;
+    let authStatus: AuthStatus = 'skipped';
+    let backendStatus!: BackendStatus;
 
     try {
       const { resolve: resolvePath } = await import('node:path');
@@ -324,6 +331,8 @@ export class CrocOffice {
       const { createExecutionCoordinator } = await import('../execution/coordinator.js');
       const { createBackendManager } = await import('../execution/backend-manager.js');
       const { createRuntimeBootstrap } = await import('../execution/runtime-bootstrap.js');
+      const { createAuthProvisioner } = await import('../execution/auth-provisioner.js');
+      const { buildExecutionQualityGate } = await import('../execution/quality-gate.js');
       const { categorizeFailure } = await import('../self-healing/index.js');
 
       // Find test files on disk
@@ -351,17 +360,46 @@ export class CrocOffice {
       }
 
       const backendManager = createBackendManager();
-      const backendReady = await backendManager.ensureReady({
-        mode,
-        cwd: this.cwd,
-        server: this.config.runtime?.server,
-        baseURL: this.config.playwright?.baseURL,
-      });
-      cleanupBackend = backendReady.cleanup;
-      if (backendReady.status === 'started') {
-        this.log(`🚀 Managed backend started (${backendReady.healthUrl})`);
-      } else if (backendReady.status === 'reused') {
-        this.log(`🔁 Reusing backend (${backendReady.healthUrl})`);
+      try {
+        const backendReady = await backendManager.ensureReady({
+          mode,
+          cwd: this.cwd,
+          server: this.config.runtime?.server,
+          baseURL: this.config.playwright?.baseURL,
+        });
+        backendStatus = backendReady.status;
+        cleanupBackend = backendReady.cleanup;
+        if (backendReady.status === 'started') {
+          this.log(`🚀 Managed backend started (${backendReady.healthUrl})`);
+        } else if (backendReady.status === 'reused') {
+          this.log(`🔁 Reusing backend (${backendReady.healthUrl})`);
+        }
+      } catch (err) {
+        backendStatus = 'failed';
+        this.lastExecutionQuality = buildExecutionQualityGate({
+          metrics: null,
+          authStatus,
+          backendStatus,
+        });
+        throw err;
+      }
+
+      const authProvisioner = createAuthProvisioner(this.config);
+      let authResult;
+      try {
+        authResult = await authProvisioner.provision();
+        authStatus = authResult.status;
+        if (authResult.status === 'ready') {
+          this.log('🔐 Auth environment prepared');
+        }
+      } catch (err) {
+        authStatus = 'failed';
+        this.lastExecutionQuality = buildExecutionQualityGate({
+          metrics: null,
+          authStatus,
+          backendStatus,
+        });
+        throw err;
       }
 
       // Healer croc monitors
@@ -372,10 +410,16 @@ export class CrocOffice {
         cwd: this.cwd,
         testFiles,
         mode,
+        env: authResult.env,
       });
       const metrics = execResult.metrics;
 
       this.lastExecutionMetrics = metrics;
+      this.lastExecutionQuality = buildExecutionQualityGate({
+        metrics,
+        authStatus,
+        backendStatus,
+      });
       const total = metrics.passed + metrics.failed + metrics.skipped + metrics.timedOut;
 
       // Update croc states
@@ -396,7 +440,7 @@ export class CrocOffice {
       this.updateNodeStatus('controller', metrics.failed > 0 ? 'failed' : 'passed');
 
       // Broadcast results
-      this.broadcast('test:complete', { metrics, total });
+      this.broadcast('test:complete', { metrics, total, quality: this.lastExecutionQuality });
 
       const duration = Date.now() - start;
       this.log(`🧪 Test execution complete in ${duration}ms`);
@@ -433,7 +477,10 @@ export class CrocOffice {
 
       const { generateReports } = await import('../reporters/index.js');
       const formats: ('html' | 'json' | 'markdown')[] = ['html', 'json', 'markdown'];
-      const reports = generateReports(this.lastPipelineResult, formats);
+      const reports = generateReports(this.lastPipelineResult, formats, {
+        metrics: this.lastExecutionMetrics,
+        quality: this.lastExecutionQuality,
+      });
       this.lastReports = reports;
 
       // Write reports to disk

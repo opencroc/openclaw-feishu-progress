@@ -45,6 +45,7 @@ export function createExecutionCoordinator(deps: ExecutionCoordinatorDeps = {}):
           encoding: 'utf-8',
           timeout: timeoutMs,
           stdio: 'pipe',
+          env: request.env,
         }));
       } catch (err: unknown) {
         const execErr = err as { stdout?: string; stderr?: string };

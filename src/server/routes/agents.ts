@@ -110,9 +110,13 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
   // GET /api/test-results — last test execution metrics
   app.get('/api/test-results', async () => {
     const metrics = office.getLastExecutionMetrics();
-    if (!metrics) return { ok: false, message: 'No tests have been run yet' };
+    const quality = office.getLastExecutionQuality();
+    if (!metrics && !quality) return { ok: false, message: 'No tests have been run yet' };
+    if (!metrics) {
+      return { ok: true, metrics: null, total: 0, quality };
+    }
     const total = metrics.passed + metrics.failed + metrics.skipped + metrics.timedOut;
-    return { ok: true, metrics, total };
+    return { ok: true, metrics, total, quality };
   });
 
   // POST /api/reports/generate — generate reports from last pipeline result
