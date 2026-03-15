@@ -100,10 +100,68 @@ npx opencroc validate --all
 npx opencroc compare --baseline=report-a.json --current=report-b.json
 ```
 
+### OpenCroc Studio の起動
+
+OpenCroc Studio は**ピクセルアート風ワニオフィス** + リアルタイム**ナレッジグラフ** UI です。ローカル Web サーバーとして起動し、プロジェクト構造・Agent ステータス・テスト結果を可視化します。
+
+```bash
+# Studio を起動（http://localhost:8765 をブラウザで自動オープン）
+npx opencroc serve
+
+# カスタムポート
+npx opencroc serve --port 3000
+
+# ブラウザ自動オープンを無効化
+npx opencroc serve --no-open
+
+# ホスト指定（リモートアクセス用）
+npx opencroc serve --host 0.0.0.0 --port 8765
+```
+
+Studio の機能：
+- **ナレッジグラフキャンバス** — モデル・コントローラー・API 関係のインタラクティブグラフ（ドラッグ、ズーム、ホバー）
+- **ピクセルワニオフィス** — 6 体の AI Agent（パーサー 🐊、アナライザー 🐊、テスター 🐊、ヒーラー 🐊、プランナー 🐊、レポーター 🐊）、リアルタイムステータスアニメーション付き
+- **リアルタイム WebSocket** — Agent ステータスとグラフ変更を即座にブラウザへ配信
+- **モジュールサイドバー** — 検出されたモジュールと Agent ステータスをひと目で確認
+- **REST API** — `GET /api/project`（グラフデータ）、`GET /api/agents`（Agent ステータス）、`POST /api/project/refresh`（再スキャン）
+
+### フルパイプライン（ワンコマンド）
+
+```bash
+# すべてを実行：generate → execute → analyze → heal → report
+npx opencroc run
+
+# オプション付き
+npx opencroc run --module=users --self-heal --report html,json
+```
+
+### CI/CD 統合
+
+```bash
+# GitHub Actions ワークフローを生成
+npx opencroc ci --platform github
+
+# GitLab CI パイプラインを生成
+npx opencroc ci --platform gitlab --self-heal
+```
+
+### Dashboard とレポート
+
+```bash
+# ビジュアル Dashboard を生成
+npx opencroc dashboard
+
+# 複数形式のレポートを生成
+npx opencroc report --format html,json,markdown
+```
+
 ## アーキテクチャ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│              OpenCroc Studio (localhost:8765)                │
+│    ピクセルワニオフィス + ナレッジグラフ + WebSocket          │
+├─────────────────────────────────────────────────────────────┤
 │                     CLI / Orchestrator                       │
 ├──────────┬──────────┬──────────┬──────────┬─────────────────┤
 │  Source   │  Chain   │  Test    │ Execution│   Self-Healing  │
@@ -306,6 +364,7 @@ export default defineConfig({
 - [x] Runtime infrastructure (Playwright config, auth setup, teardown, network monitor)
 - [x] Full orchestration pipeline
 - [x] Advanced reporters (checklist, workorder, token tracking)
+- [x] OpenCroc Studio — ピクセルワニオフィス + ナレッジグラフ UI（`opencroc serve`）
 
 ## ドキュメント
 

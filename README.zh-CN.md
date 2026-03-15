@@ -100,10 +100,68 @@ npx opencroc validate --all
 npx opencroc compare --baseline=report-a.json --current=report-b.json
 ```
 
+### 启动 OpenCroc Studio
+
+OpenCroc Studio 是一个**像素风鳄鱼办公室** + 实时**知识图谱** UI。它在本地启动一个 Web 服务器，可视化展示项目结构、Agent 状态和测试结果。
+
+```bash
+# 启动 Studio（自动打开浏览器 http://localhost:8765）
+npx opencroc serve
+
+# 自定义端口
+npx opencroc serve --port 3000
+
+# 不自动打开浏览器
+npx opencroc serve --no-open
+
+# 指定 host（如远程访问）
+npx opencroc serve --host 0.0.0.0 --port 8765
+```
+
+Studio 功能：
+- **知识图谱画布** — 项目模型、控制器、API 关系的可交互图谱（拖拽、缩放、悬停提示）
+- **像素鳄鱼办公室** — 6 只 AI 鳄鱼 Agent（解析鳄 🐊、分析鳄 🐊、测试鳄 🐊、修复鳄 🐊、规划鳄 🐊、汇报鳄 🐊），带实时状态动画
+- **实时 WebSocket** — Agent 状态和图谱变化即时推送到浏览器
+- **模块侧边栏** — 一目了然浏览已发现的模块和 Agent 状态
+- **REST API** — `GET /api/project`（图谱数据）、`GET /api/agents`（Agent 状态）、`POST /api/project/refresh`（重新扫描）
+
+### 完整流水线（一条命令）
+
+```bash
+# 一键运行：generate → execute → analyze → heal → report
+npx opencroc run
+
+# 带选项
+npx opencroc run --module=users --self-heal --report html,json
+```
+
+### CI/CD 集成
+
+```bash
+# 生成 GitHub Actions 工作流
+npx opencroc ci --platform github
+
+# 生成 GitLab CI 管道
+npx opencroc ci --platform gitlab --self-heal
+```
+
+### Dashboard 与报告
+
+```bash
+# 生成可视化 Dashboard
+npx opencroc dashboard
+
+# 生成多格式报告
+npx opencroc report --format html,json,markdown
+```
+
 ## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│              OpenCroc Studio (localhost:8765)                │
+│    像素鳄鱼办公室  +  知识图谱  +  WebSocket                 │
+├─────────────────────────────────────────────────────────────┤
 │                     CLI / Orchestrator                       │
 ├──────────┬──────────┬──────────┬──────────┬─────────────────┤
 │  Source   │  Chain   │  Test    │ Execution│   Self-Healing  │
@@ -306,13 +364,14 @@ export default defineConfig({
 - [x] Runtime 基础设施（Playwright 配置生成、认证 Setup、Teardown、网络监控）
 - [x] 全流程编排管道
 - [x] 高级报告系统（检查清单、工单生成、Token 追踪）
+- [x] OpenCroc Studio — 像素鳄鱼办公室 + 知识图谱 UI（`opencroc serve`）
 
 ## 发布快照
 
-- 当前稳定版本：`1.2.0`
-- npm `latest` 标签：`1.2.0`
-- Roadmap 状态：已全部完成
-- 全量质量门禁：32 个测试文件 / 365 个测试通过（Node.js 20.x & 22.x）
+- 当前稳定版本：`1.3.0`
+- npm `latest` 标签：`1.3.0`
+- Roadmap 状态：M1 Studio 已交付
+- 全量质量门禁：34 个测试文件 / 373 个测试通过（Node.js 20.x & 22.x）
 
 ### 版本节奏
 
@@ -324,6 +383,7 @@ export default defineConfig({
 - `1.0.0`：全流程编排管道
 - `1.1.0`：高级自愈（对话循环、可控修复器、自动修复 PR 生成）
 - `1.2.0`：高级报告系统 + Sprint 0-3 迁移完成
+- `1.3.0`：OpenCroc Studio M1 — Fastify 服务器、知识图谱 API、像素鳄鱼办公室前端
 
 ### 发布验证
 

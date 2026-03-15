@@ -100,10 +100,68 @@ npx opencroc validate --all
 npx opencroc compare --baseline=report-a.json --current=report-b.json
 ```
 
+### Launch OpenCroc Studio
+
+OpenCroc Studio is a **pixel-art croc office** with a real-time **knowledge graph** UI. It runs as a local web server and visualizes your project structure, agent status, and test results.
+
+```bash
+# Start Studio (opens browser at http://localhost:8765)
+npx opencroc serve
+
+# Custom port
+npx opencroc serve --port 3000
+
+# Don't auto-open browser
+npx opencroc serve --no-open
+
+# Specify host (e.g. for remote access)
+npx opencroc serve --host 0.0.0.0 --port 8765
+```
+
+Studio features:
+- **Knowledge Graph Canvas** — interactive graph of your project's models, controllers, and API relations (drag, zoom, hover)
+- **Pixel Croc Office** — 6 AI agents (Parser 🐊, Analyzer 🐊, Tester 🐊, Healer 🐊, Planner 🐊, Reporter 🐊) with live status animations
+- **Real-time WebSocket** — agent status and graph changes push to the browser instantly
+- **Module Sidebar** — browse discovered modules and agent states at a glance
+- **REST API** — `GET /api/project` (graph data), `GET /api/agents` (agent states), `POST /api/project/refresh` (re-scan)
+
+### Full Pipeline (One Command)
+
+```bash
+# Run everything: generate → execute → analyze → heal → report
+npx opencroc run
+
+# With options
+npx opencroc run --module=users --self-heal --report html,json
+```
+
+### CI/CD Integration
+
+```bash
+# Generate GitHub Actions workflow
+npx opencroc ci --platform github
+
+# Generate GitLab CI pipeline
+npx opencroc ci --platform gitlab --self-heal
+```
+
+### Dashboard & Reports
+
+```bash
+# Generate visual dashboard
+npx opencroc dashboard
+
+# Generate reports in multiple formats
+npx opencroc report --format html,json,markdown
+```
+
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│              OpenCroc Studio (localhost:8765)                │
+│    Pixel Croc Office  +  Knowledge Graph  +  WebSocket      │
+├─────────────────────────────────────────────────────────────┤
 │                     CLI / Orchestrator                       │
 ├──────────┬──────────┬──────────┬──────────┬─────────────────┤
 │  Source   │  Chain   │  Test    │ Execution│   Self-Healing  │
@@ -306,13 +364,14 @@ export default defineConfig({
 - [x] Runtime infrastructure (Playwright config, auth setup, teardown, network monitor)
 - [x] Full orchestration pipeline
 - [x] Advanced reporters (checklist, workorder, token tracking)
+- [x] OpenCroc Studio — pixel croc office + knowledge graph UI (`opencroc serve`)
 
 ## Release Snapshot
 
-- Current stable release: `1.2.0`
-- npm dist-tag `latest`: `1.2.0`
-- Roadmap status: fully completed
-- Full-suite quality gate: 32 test files / 365 tests passing on Node.js 20.x & 22.x
+- Current stable release: `1.3.0`
+- npm dist-tag `latest`: `1.3.0`
+- Roadmap status: M1 Studio delivered
+- Full-suite quality gate: 34 test files / 373 tests passing on Node.js 20.x & 22.x
 
 ### Version Rhythm
 
@@ -324,6 +383,7 @@ export default defineConfig({
 - `1.0.0`: full orchestration pipeline
 - `1.1.0`: advanced self-healing (dialog loop, controlled fixer, auto-fix PR generation)
 - `1.2.0`: advanced reporters (checklist, workorder, token tracking) + Sprint 0-3 migration complete
+- `1.3.0`: OpenCroc Studio M1 — Fastify server, knowledge graph API, pixel croc office frontend
 
 ### Release Verification
 
