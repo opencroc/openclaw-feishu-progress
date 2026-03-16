@@ -61,13 +61,13 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       reply.code(404).send({ error: 'Not found' });
       return;
     }
-    // Prefer the Studio HTML (new universal platform) over the old index
-    const studioPath = join(webDir, 'index-studio.html');
+    // Prefer 3D Office as primary entry; Studio accessible via /index-studio.html
     const indexPath = join(webDir, 'index.html');
-    if (existsSync(studioPath)) {
-      reply.sendFile('index-studio.html');
-    } else if (existsSync(indexPath)) {
+    const studioPath = join(webDir, 'index-studio.html');
+    if (existsSync(indexPath)) {
       reply.sendFile('index.html');
+    } else if (existsSync(studioPath)) {
+      reply.sendFile('index-studio.html');
     } else {
       reply.code(200).header('content-type', 'text/html').send(getEmbeddedHtml());
     }

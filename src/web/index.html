@@ -307,9 +307,11 @@ body{background:#000;color:var(--text)}
   </div>
   <div class="stats">
     <div class="stat-box"><span class="stat-label">MODULES</span><span class="stat-value" id="s-mod">0</span></div>
-    <div class="stat-box"><span class="stat-label">MODELS</span><span class="stat-value" id="s-mdl">0</span></div>
-    <div class="stat-box"><span class="stat-label">APIs</span><span class="stat-value" id="s-api">0</span></div>
-    <div class="stat-box"><span class="stat-label">TESTS</span><span class="stat-value" id="s-files">-</span></div>
+    <div class="stat-box"><span class="stat-label">CLASSES</span><span class="stat-value" id="s-mdl">0</span></div>
+    <div class="stat-box"><span class="stat-label">FUNCS</span><span class="stat-value" id="s-api">0</span></div>
+    <div class="stat-box"><span class="stat-label">FILES</span><span class="stat-value" id="s-files">-</span></div>
+    <div class="stat-box"><span class="stat-label">NODES</span><span class="stat-value" id="s-nodes">-</span></div>
+    <div class="stat-box"><span class="stat-label">RISKS</span><span class="stat-value" id="s-risks">-</span></div>
   </div>
   <div class="header-end">
     <button id="theme-toggle" title="Toggle theme"><svg id="theme-icon-dark" viewBox="0 0 16 16" fill="none"><path d="M8 1a7 7 0 100 14 5 5 0 010-14z" fill="currentColor"/></svg><svg id="theme-icon-light" viewBox="0 0 16 16" fill="none" style="display:none"><circle cx="8" cy="8" r="3" fill="currentColor"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3.05" y1="3.05" x2="4.46" y2="4.46"/><line x1="11.54" y1="11.54" x2="12.95" y2="12.95"/><line x1="3.05" y1="12.95" x2="4.46" y2="11.54"/><line x1="11.54" y1="4.46" x2="12.95" y2="3.05"/></g></svg></button>
@@ -430,6 +432,8 @@ async function boot(){
   ui.setLoading(80,'Connecting…');
   ui.init({doScan,doPipeline,doReset,doRunTests,doReports,toggleTheme,setView,openFilePreview,openReportPreview});
   await fetchProject();
+  /* Try to load Studio summary if a previous scan exists */
+  try{const sr=await fetch('/api/studio/summary');if(sr.ok){const sd=await sr.json();state.set({studioScan:sd});updateStudioStats(sd)}}catch(e){}
 
   ui.setLoading(90,'Starting WebSocket…');
   connectWS();
@@ -461,11 +465,41 @@ async function fetchProject(){
     updateAll();
   }catch(e){ui.addLog('Failed to fetch project: '+e.message,'error')}
 }
-async function doScan(){if(state.get('running'))return;state.set({running:true});updateBtns();ui.addLog('🔍 Starting codebase scan…','info',true);try{await fetch('/api/scan',{method:'POST'})}catch(e){ui.addLog('Scan error: '+e.message,'error');state.set({running:false});updateBtns()}}
+async function doScan(){if(state.get('running'))return;state.set({running:true});updateBtns();ui.addLog('🔍 Starting codebase scan…','info',true);
+try{const [r1]=await Promise.allSettled([fetch('/api/scan',{method:'POST'})]);
+/* Also trigger Studio knowledge graph scan */
+try{
+  const cwd=state.get('project')?.backendRoot||'.';
+  const r2=await fetch('/api/studio/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:cwd})});
+  if(r2.ok){const sd=await r2.json();state.set({studioScan:sd});
+    ui.addLog(`📊 知识图谱: ${sd.stats?.totalNodes||0} 节点, ${sd.stats?.totalEdges||0} 边, ${sd.risks||0} 风险`,'success',true);
+    ui.showToast(`知识图谱已构建: ${sd.stats?.totalNodes||0} 节点`,'success');
+    updateStudioStats(sd);
+  }
+}catch(e2){ui.addLog('Studio scan skipped: '+e2.message,'warning')}
+}catch(e){ui.addLog('Scan error: '+e.message,'error');state.set({running:false});updateBtns()}}
 async function doPipeline(){if(state.get('running'))return;state.set({running:true});updateBtns();ui.addLog('⚡ Pipeline started…','info',true);try{await fetch('/api/pipeline',{method:'POST'})}catch(e){ui.addLog('Pipeline error: '+e.message,'error');state.set({running:false});updateBtns()}}
 async function doReset(){try{await fetch('/api/reset',{method:'POST'})}catch(e){ui.addLog('Reset error: '+e.message,'error')}state.set({running:false});updateBtns();ui.addLog('♻️ Agents reset','info',true)}
 async function doRunTests(){if(state.get('running'))return;state.set({running:true});updateBtns();ui.addLog('🧪 Running tests (mode: '+state.get('runMode')+')…','info',true);try{const r=await fetch('/api/run-tests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:state.get('runMode')})});const d=await r.json();if(d.error){ui.addLog('Test error: '+d.error,'error');state.set({running:false});updateBtns()}}catch(e){ui.addLog('Test error: '+e.message,'error');state.set({running:false});updateBtns()}}
-async function doReports(){if(state.get('running'))return;state.set({running:true});updateBtns();ui.addLog('📊 Generating reports…','info',true);try{await fetch('/api/reports/generate',{method:'POST'})}catch(e){ui.addLog('Report error: '+e.message,'error');state.set({running:false});updateBtns()}}
+async function doReports(){if(state.get('running'))return;state.set({running:true});updateBtns();ui.addLog('📊 Generating reports…','info',true);
+try{
+  /* Try Studio multi-perspective reports first */
+  const perspectives=['developer','architect','tester','product','student','executive'];
+  const studioReports=[];
+  for(const p of perspectives){
+    try{const r=await fetch('/api/studio/report/'+p);if(r.ok){const d=await r.json();if(d.content)studioReports.push({perspective:p,title:d.title||p,content:d.content})}}
+    catch(e){/* skip */}
+  }
+  if(studioReports.length>0){
+    state.set({running:false,studioReports});updateBtns();
+    renderStudioReports(studioReports);
+    ui.addLog('📊 '+studioReports.length+' perspective reports generated','success',true);
+    ui.showToast(studioReports.length+' reports ready','success');
+  } else {
+    /* Fallback to E2E report generation */
+    await fetch('/api/reports/generate',{method:'POST'});
+  }
+}catch(e){ui.addLog('Report error: '+e.message,'error');state.set({running:false});updateBtns()}}
 
 /* ─── WebSocket ────────────────────────────────────────────────────────────── */
 function connectWS(){
@@ -502,6 +536,9 @@ function handleWS(msg){
       ui.showToast(`Tests: ${msg.payload.metrics?.passed||0}✓ ${msg.payload.metrics?.failed||0}✗`,msg.payload.metrics?.failed?'warning':'success');break;
     case'reports:generated':state.set({running:false,reports:msg.payload});updateBtns();
       ui.updateReports(msg.payload);ui.addLog('📊 '+msg.payload.length+' reports generated','success',true);break;
+    case'scan:complete':state.set({running:false});updateBtns();
+      ui.addLog('✅ Scan complete','success',true);ui.showToast('Scan completed','success');
+      fetchProject();break;
   }
 }
 
@@ -517,6 +554,42 @@ async function openFilePreview(idx){try{const r=await fetch('/api/files/'+idx);c
 async function openReportPreview(fmt){try{const r=await fetch('/api/reports/'+fmt);const t=await r.text();if(fmt==='html'){const w=window.open('','_blank');if(w){w.document.write(t);w.document.close()}return}document.getElementById('fp-title').textContent='Report: '+fmt;document.getElementById('fp-code').textContent=t;document.getElementById('file-preview').classList.add('visible')}catch(e){ui.showToast('Failed to load report','error')}}
 function toggleTheme(){const cur=state.get('theme');const nxt=cur==='dark'?'light':'dark';state.set({theme:nxt});document.documentElement.setAttribute('data-theme',nxt);localStorage.setItem('opencroc-theme',nxt);document.getElementById('theme-icon-dark').style.display=nxt==='dark'?'':'none';document.getElementById('theme-icon-light').style.display=nxt==='light'?'':'none';updateOfficeLighting(nxt)}
 function setView(v){state.set({currentView:v});document.getElementById('view-3d').classList.toggle('active',v==='3d');document.getElementById('view-graph').classList.toggle('active',v==='graph');if(v==='3d'){camCtrl.flyTo('office')}else{window.location.href='/index-studio.html'}}
+
+/* ─── Studio Integration Helpers ───────────────────────────────────────────── */
+function updateStudioStats(sd){
+  if(!sd||!sd.stats)return;
+  const s=sd.stats;
+  document.getElementById('s-mod').textContent=s.moduleCount||0;
+  document.getElementById('s-mdl').textContent=s.classCount||0;
+  document.getElementById('s-api').textContent=s.functionCount||0;
+  document.getElementById('s-files').textContent=s.fileCount||0;
+  document.getElementById('s-nodes').textContent=s.totalNodes||0;
+  document.getElementById('s-risks').textContent=sd.risks||0;
+  const risksEl=document.getElementById('s-risks');
+  if(sd.risks>0){risksEl.style.color='var(--orange)'}else{risksEl.style.color=''}
+}
+function renderStudioReports(reports){
+  const panel=document.getElementById('reports-panel');
+  if(!panel)return;
+  const icons={'developer':'\ud83d\udc68\u200d\ud83d\udcbb','architect':'\ud83c\udfd7\ufe0f','tester':'\ud83e\uddea','product':'\ud83d\udccb','student':'\ud83c\udf93','executive':'\ud83d\udcc8'};
+  panel.innerHTML=reports.map(r=>`
+    <div class="report-card" style="padding:12px;margin:8px 0;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);cursor:pointer" onclick="this.querySelector('.report-body').classList.toggle('hidden')">
+      <div style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text);font-size:13px">
+        <span>${icons[r.perspective]||'\ud83d\udcca'}</span>
+        <span>${esc(r.title||r.perspective)}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-subtle)">\u70b9\u51fb\u5c55\u5f00</span>
+      </div>
+      <div class="report-body hidden" style="margin-top:10px;font-size:12px;color:var(--text-dim);white-space:pre-wrap;max-height:400px;overflow:auto;line-height:1.6">${esc(r.content)}</div>
+    </div>`).join('');
+  /* Switch to Reports tab */
+  document.querySelectorAll('.panel-tabs .tab').forEach(t=>t.classList.remove('active'));
+  const reportTab=document.querySelector('.tab[data-tab="reports"]');
+  if(reportTab)reportTab.classList.add('active');
+  document.getElementById('log-list').classList.add('hidden');
+  document.getElementById('file-list').classList.add('hidden');
+  document.getElementById('results-panel').classList.add('hidden');
+  panel.classList.remove('hidden');
+}
 
 /* ─── Events ───────────────────────────────────────────────────────────────── */
 document.getElementById('btn-scan').addEventListener('click',doScan);
