@@ -1,4 +1,4 @@
-// OpenCroc — AI-native E2E Testing Framework
+// OpenCroc — AI-native E2E Testing & Project Intelligence Platform
 // Public API
 
 // --- Core Types ---
@@ -174,3 +174,54 @@ export type {
   OrchestrationSummary,
 } from './orchestrator/index.js';
 export type { OrchestrationReportOptions } from './orchestrator/reporter.js';
+
+// --- Scanner (Universal Project Analysis) ---
+export { detectProject } from './scanner/language-detector.js';
+export type { LanguageDetectionResult } from './scanner/language-detector.js';
+export { scanProject } from './scanner/project-scanner.js';
+export type { ScanOptions } from './scanner/project-scanner.js';
+export { cloneAndScan } from './scanner/github-cloner.js';
+export type { CloneOptions } from './scanner/github-cloner.js';
+
+// --- Knowledge Graph ---
+export type {
+  GraphNode,
+  GraphEdge,
+  GraphNodeType,
+  GraphEdgeRelation,
+  KnowledgeGraph as StudioKnowledgeGraph,
+  ProjectMetadata,
+  ProjectStats,
+  ProjectType,
+  RiskAnnotation,
+  RiskCategory,
+  RiskSeverity,
+  ImpactAnalysis,
+  PerspectiveReport,
+  ReportPerspective,
+  ReportSection,
+  SimulationScenario,
+  SimulationResult,
+  ScanResult,
+  FrameworkDetection,
+  DiscoveredFile,
+  ExtractedEntity,
+  ExtractedRelationship,
+} from './graph/types.js';
+export {
+  buildKnowledgeGraph,
+  queryNodes,
+  getNeighbors,
+  bfsTraversal,
+  findPaths,
+  toMermaid,
+  getGraphStats,
+} from './graph/index.js';
+
+// --- Insight (AI Analysis) ---
+export {
+  analyzeRisks,
+  analyzeImpact,
+  generateReport as generateInsightReport,
+  simulateScenario,
+} from './insight/index.js';

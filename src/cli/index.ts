@@ -129,4 +129,34 @@ program
     await serve(opts);
   });
 
+// ===== Studio Commands — Universal Project Analysis =====
+
+program
+  .command('scan')
+  .description('Scan any project and build knowledge graph (local path, GitHub URL, or user/repo)')
+  .argument('<target>', 'Local path, GitHub URL (https://github.com/user/repo), or shorthand (user/repo)')
+  .option('-b, --branch <branch>', 'Git branch to clone')
+  .option('-o, --output <dir>', 'Output directory for results', './opencroc-output')
+  .option('--json', 'Output as JSON')
+  .option('--mermaid', 'Output Mermaid diagram')
+  .option('--risks', 'Include risk analysis')
+  .option('--report <perspective>', 'Generate perspective report (developer/architect/tester/product/student/executive)')
+  .action(async (target, opts) => {
+    const { scan } = await import('./commands/scan.js');
+    await scan(target, opts);
+  });
+
+program
+  .command('analyze')
+  .description('Analyze a scanned project for risks and generate reports')
+  .argument('[target]', 'Project path (default: current directory)', '.')
+  .option('--perspective <role>', 'Report perspective (developer/architect/tester/product/student/executive)', 'developer')
+  .option('--risks', 'Show risk analysis', true)
+  .option('--impact <nodeId>', 'Analyze impact of a specific node')
+  .option('-o, --output <dir>', 'Output directory', './opencroc-output')
+  .action(async (target, opts) => {
+    const { analyze } = await import('./commands/analyze.js');
+    await analyze(target, opts);
+  });
+
 program.parse();

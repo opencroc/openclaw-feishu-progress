@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { registerProjectRoutes } from './routes/project.js';
 import { registerAgentRoutes } from './routes/agents.js';
+import { registerStudioRoutes } from './routes/studio.js';
 import { CrocOffice } from './croc-office.js';
 import type { OpenCrocConfig } from '../types.js';
 
@@ -42,6 +43,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   // --- REST API routes ---
   registerProjectRoutes(app, office);
   registerAgentRoutes(app, office);
+  registerStudioRoutes(app, office);
 
   // --- WebSocket endpoint for real-time updates ---
   app.register(async (fastify) => {
@@ -57,8 +59,12 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       reply.code(404).send({ error: 'Not found' });
       return;
     }
+    // Prefer the Studio HTML (new universal platform) over the old index
+    const studioPath = join(webDir, 'index-studio.html');
     const indexPath = join(webDir, 'index.html');
-    if (existsSync(indexPath)) {
+    if (existsSync(studioPath)) {
+      reply.sendFile('index-studio.html');
+    } else if (existsSync(indexPath)) {
       reply.sendFile('index.html');
     } else {
       reply.code(200).header('content-type', 'text/html').send(getEmbeddedHtml());

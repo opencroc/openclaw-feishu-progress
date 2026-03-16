@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenCroc Studio — 项目智能分析平台</title>
+<style>
+/* ===== CSS Variables — Dual Theme ===== */
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #111128;
+  --bg-card: #1a1a35;
+  --bg-input: #222250;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888;
+  --text-muted: #555;
+  --accent: #4ecca3;
+  --accent-hover: #45b890;
+  --danger: #e94560;
+  --warning: #f39c12;
+  --info: #3498db;
+  --border: #2a2a50;
+  --shadow: rgba(0,0,0,0.4);
+  --font-pixel: 'Courier New', monospace;
+  --font-pro: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-current: var(--font-pixel);
+  --radius: 8px;
+  --node-model: #4ecca3;
+  --node-api: #e94560;
+  --node-service: #3498db;
+  --node-module: #f39c12;
+  --node-component: #9b59b6;
+  --node-file: #666;
+  --node-dependency: #888;
+}
+
+[data-theme="professional"] {
+  --bg-primary: #f5f7fa;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f0f2f5;
+  --text-primary: #1a1a2e;
+  --text-secondary: #555;
+  --text-muted: #999;
+  --border: #e0e0e0;
+  --shadow: rgba(0,0,0,0.08);
+  --font-current: var(--font-pro);
+}
+
+/* ===== Reset & Base ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-current);
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ===== Layout ===== */
+.app { display: flex; height: 100vh; }
+.sidebar { width: 280px; background: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.header { padding: 12px 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.graph-area { flex: 1; position: relative; overflow: hidden; }
+.panel { width: 340px; background: var(--bg-secondary); border-left: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; display: none; }
+.panel.open { display: block; }
+
+/* ===== Header ===== */
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon { font-size: 28px; }
+.logo-text { font-size: 16px; font-weight: bold; color: var(--accent); }
+.logo-sub { font-size: 11px; color: var(--text-secondary); margin-left: 4px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ===== Buttons ===== */
+.btn {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+  font-family: var(--font-current); font-size: 12px; transition: all 0.2s;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: bold; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-icon { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+/* ===== Sidebar ===== */
+.sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
+.scan-input-group { display: flex; gap: 6px; margin-top: 10px; }
+.scan-input {
+  flex: 1; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-current); font-size: 12px;
+}
+.scan-input::placeholder { color: var(--text-muted); }
+.scan-input:focus { outline: none; border-color: var(--accent); }
+
+.sidebar-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.sidebar-section h3 { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 1px; }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stat-item { padding: 8px; background: var(--bg-card); border-radius: var(--radius); text-align: center; }
+.stat-value { font-size: 18px; font-weight: bold; color: var(--accent); }
+.stat-label { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
+.health-bar { height: 8px; background: var(--bg-input); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.health-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+.node-type-list { list-style: none; }
+.node-type-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius);
+  cursor: pointer; font-size: 12px; transition: background 0.2s;
+}
+.node-type-item:hover { background: var(--bg-card); }
+.node-type-dot { width: 10px; height: 10px; border-radius: 50%; }
+.node-type-count { margin-left: auto; color: var(--text-secondary); font-size: 11px; }
+
+.risk-list { list-style: none; }
+.risk-item { padding: 8px; background: var(--bg-card); border-radius: var(--radius); margin-bottom: 4px; font-size: 11px; cursor: pointer; }
+.risk-item:hover { border-color: var(--accent); }
+.risk-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; text-transform: uppercase; margin-right: 6px; }
+.risk-critical { background: var(--danger); color: #fff; }
+.risk-high { background: #e67e22; color: #fff; }
+.risk-medium { background: var(--warning); color: #000; }
+.risk-low { background: var(--info); color: #fff; }
+
+/* ===== Graph Canvas ===== */
+#graph-canvas { width: 100%; height: 100%; background: var(--bg-primary); }
+
+/* ===== Perspective Tabs ===== */
+.perspective-tabs { display: flex; gap: 4px; padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.perspective-tab {
+  padding: 4px 12px; border-radius: var(--radius); font-size: 11px; cursor: pointer;
+  background: var(--bg-card); color: var(--text-secondary); white-space: nowrap; border: 1px solid transparent;
+}
+.perspective-tab:hover { color: var(--text-primary); border-color: var(--border); }
+.perspective-tab.active { background: var(--accent); color: #000; font-weight: bold; }
+
+/* ===== Panel Content ===== */
+.panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.panel-header h2 { font-size: 14px; }
+.panel-body { padding: 16px; }
+.panel-body h3 { font-size: 13px; margin: 12px 0 6px; color: var(--accent); }
+.panel-body p { font-size: 12px; line-height: 1.6; margin-bottom: 8px; }
+.panel-body pre { background: var(--bg-input); padding: 10px; border-radius: var(--radius); font-size: 11px; overflow-x: auto; margin: 8px 0; }
+.panel-body ul { padding-left: 16px; font-size: 12px; line-height: 1.8; }
+
+/* ===== Loading & Status ===== */
+.loading-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.7); display: flex;
+  flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+}
+.loading-overlay.hidden { display: none; }
+.loading-croc { font-size: 64px; animation: bounce 0.6s infinite alternate; }
+@keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+.loading-text { margin-top: 12px; color: var(--accent); font-size: 14px; }
+.loading-detail { color: var(--text-secondary); font-size: 11px; margin-top: 4px; }
+
+/* ===== Welcome Screen ===== */
+.welcome {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 50;
+}
+.welcome.hidden { display: none; }
+.welcome-croc { font-size: 80px; animation: bounce 1s infinite alternate; }
+.welcome h1 { font-size: 32px; color: var(--accent); margin-top: 20px; }
+.welcome p { color: var(--text-secondary); margin-top: 8px; font-size: 14px; }
+.welcome-actions { margin-top: 24px; display: flex; gap: 12px; }
+.welcome-input { width: 400px; padding: 12px 16px; font-size: 14px; }
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ===== Agent Bar ===== */
+.agent-bar { display: flex; gap: 8px; padding: 8px 16px; background: var(--bg-secondary); border-top: 1px solid var(--border); }
+.agent-chip {
+  display: flex; align-items: center; gap: 4px; padding: 4px 10px;
+  background: var(--bg-card); border-radius: 12px; font-size: 11px;
+}
+.agent-status { width: 6px; height: 6px; border-radius: 50%; }
+.agent-status.idle { background: var(--text-muted); }
+.agent-status.working { background: var(--warning); animation: pulse 1s infinite; }
+.agent-status.done { background: var(--accent); }
+.agent-status.error { background: var(--danger); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ===== Tooltip ===== */
+.tooltip {
+  position: fixed; background: var(--bg-card); border: 1px solid var(--border);
+  padding: 8px 12px; border-radius: var(--radius); font-size: 11px;
+  pointer-events: none; z-index: 200; max-width: 280px; box-shadow: 0 4px 12px var(--shadow);
+  display: none;
+}
+.tooltip.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🐊</span>
+        <span class="logo-text">OpenCroc Studio</span>
+      </div>
+      <div class="scan-input-group">
+        <input id="scan-input" class="scan-input" placeholder="路径 / GitHub URL / user/repo" />
+        <button id="scan-btn" class="btn btn-primary btn-sm" onclick="startScan()">扫描</button>
+      </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="sidebar-section" id="stats-section" style="display:none">
+      <h3>项目概览</h3>
+      <div id="project-name" style="font-size:14px;font-weight:bold;margin-bottom:6px;color:var(--accent)"></div>
+      <div id="project-type" style="font-size:11px;color:var(--text-secondary);margin-bottom:8px"></div>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="stat-value" id="stat-apis">0</div><div class="stat-label">APIs</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-models">0</div><div class="stat-label">Models</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-files">0</div><div class="stat-label">Files</div></div>
+        <div class="stat-item"><div class="stat-value" id="stat-risks">0</div><div class="stat-label">Risks</div></div>
+      </div>
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px">
+          <span>健康度</span><span id="health-score">—</span>
+        </div>
+        <div class="health-bar"><div class="health-fill" id="health-fill" style="width:0%;background:var(--accent)"></div></div>
+      </div>
+    </div>
+
+    <!-- Node Types Filter -->
+    <div class="sidebar-section" id="filter-section" style="display:none">
+      <h3>实体类型</h3>
+      <ul class="node-type-list" id="node-type-list"></ul>
+    </div>
+
+    <!-- Risks -->
+    <div class="sidebar-section" id="risk-section" style="display:none;flex:1;overflow-y:auto">
+      <h3>风险点 <span id="risk-count" style="color:var(--danger)"></span></h3>
+      <ul class="risk-list" id="risk-list"></ul>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Header -->
+    <div class="header">
+      <div class="perspective-tabs" id="perspective-tabs">
+        <div class="perspective-tab active" data-view="graph">📊 知识图谱</div>
+        <div class="perspective-tab" data-perspective="developer">👨‍💻 开发者</div>
+        <div class="perspective-tab" data-perspective="architect">🏗️ 架构师</div>
+        <div class="perspective-tab" data-perspective="tester">🧪 测试</div>
+        <div class="perspective-tab" data-perspective="product">📋 产品</div>
+        <div class="perspective-tab" data-perspective="student">🎓 学生</div>
+        <div class="perspective-tab" data-perspective="executive">📈 管理层</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-icon" onclick="toggleTheme()" title="切换主题">🎨</button>
+        <button class="btn btn-icon" onclick="togglePanel()" title="详情面板">📋</button>
+      </div>
+    </div>
+
+    <!-- Graph Area -->
+    <div class="graph-area" id="graph-area">
+      <!-- Welcome Screen -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-croc">🐊</div>
+        <h1>OpenCroc Studio</h1>
+        <p>任意项目 → 60秒 → 知识图谱 + 风险分析 + 多角色报告</p>
+        <div class="welcome-actions">
+          <input id="welcome-input" class="scan-input welcome-input" placeholder="输入本地路径、GitHub URL 或 user/repo" />
+          <button class="btn btn-primary" onclick="startScanFromWelcome()">开始分析</button>
+        </div>
+        <div style="margin-top:16px;color:var(--text-muted);font-size:12px">
+          示例: <code>./backend</code> &nbsp;|&nbsp; <code>https://github.com/expressjs/express</code> &nbsp;|&nbsp; <code>facebook/react</code>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div class="loading-overlay hidden" id="loading">
+        <div class="loading-croc">🐊</div>
+        <div class="loading-text" id="loading-text">扫描中...</div>
+        <div class="loading-detail" id="loading-detail"></div>
+      </div>
+
+      <!-- SVG Graph Canvas -->
+      <svg id="graph-canvas"></svg>
+
+      <!-- Report View (hidden by default) -->
+      <div id="report-view" style="display:none;padding:24px;overflow-y:auto;height:100%;background:var(--bg-primary)">
+        <div id="report-content" style="max-width:800px;margin:0 auto"></div>
+      </div>
+    </div>
+
+    <!-- Agent Bar -->
+    <div class="agent-bar" id="agent-bar">
+      <div class="agent-chip"><div class="agent-status idle" id="agent-parser"></div> 解析鳄</div>
+      <div class="agent-chip"><div class="agent-status idle" id="agent-analyzer"></div> 分析鳄</div>
+      <div class="agent-chip"><div class="agent-status idle" id="agent-planner"></div> 规划鳄</div>
+      <div class="agent-chip"><div class="agent-status idle" id="agent-tester"></div> 测试鳄</div>
+      <div class="agent-chip"><div class="agent-status idle" id="agent-healer"></div> 修复鳄</div>
+      <div class="agent-chip"><div class="agent-status idle" id="agent-reporter"></div> 汇报鳄</div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="panel" id="panel">
+    <div class="panel-header">
+      <h2 id="panel-title">详情</h2>
+      <button class="btn btn-sm" onclick="togglePanel()">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ===== State =====
+let graphData = { nodes: [], edges: [] };
+let riskData = [];
+let currentTheme = 'pixel';
+let selectedNode = null;
+let simulation = null; // Force simulation
+let transform = { x: 0, y: 0, scale: 1 };
+
+// Node type colors
+const TYPE_COLORS = {
+  model: '#4ecca3', api: '#e94560', service: '#3498db', module: '#f39c12',
+  component: '#9b59b6', file: '#666', dependency: '#888', class: '#2ecc71',
+  function: '#1abc9c', middleware: '#e67e22', route: '#e94560', database: '#8e44ad',
+  cache: '#d35400', queue: '#c0392b', 'external-api': '#7f8c8d',
+  permission: '#e74c3c', page: '#16a085', store: '#2980b9', test: '#27ae60',
+  unknown: '#555',
+};
+
+const TYPE_LABELS = {
+  model: '数据模型', api: 'API接口', service: '服务', module: '模块',
+  component: '组件', file: '文件', dependency: '依赖', class: '类',
+  function: '函数', middleware: '中间件', route: '路由', database: '数据库',
+  cache: '缓存', queue: '队列', 'external-api': '外部API',
+  permission: '权限', page: '页面', store: '状态管理', test: '测试',
+  unknown: '未知',
+};
+
+// ===== Scan =====
+async function startScan() {
+  const target = document.getElementById('scan-input').value.trim();
+  if (!target) return;
+  await doScan(target);
+}
+
+function startScanFromWelcome() {
+  const target = document.getElementById('welcome-input').value.trim();
+  if (!target) return;
+  document.getElementById('scan-input').value = target;
+  doScan(target);
+}
+
+async function doScan(target) {
+  document.getElementById('welcome').classList.add('hidden');
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('loading-text').textContent = '正在扫描 ' + target + '...';
+
+  try {
+    const res = await fetch('/api/studio/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('loading-text').textContent = '❌ ' + (data.error || '扫描失败');
+      setTimeout(() => document.getElementById('loading').classList.add('hidden'), 3000);
+      return;
+    }
+
+    // Load graph and risks
+    await loadGraph();
+    await loadRisks();
+    await loadSummary();
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('stats-section').style.display = '';
+    document.getElementById('filter-section').style.display = '';
+    document.getElementById('risk-section').style.display = '';
+  } catch (err) {
+    document.getElementById('loading-text').textContent = '❌ ' + err.message;
+    setTimeout(() => document.getElementById('loading').classList.add('hidden'), 3000);
+  }
+}
+
+async function loadGraph() {
+  const res = await fetch('/api/studio/graph');
+  const data = await res.json();
+  graphData = data;
+  renderGraph();
+  renderNodeTypeFilter();
+}
+
+async function loadRisks() {
+  const res = await fetch('/api/studio/risks');
+  const data = await res.json();
+  riskData = data.risks || [];
+  renderRiskList();
+  document.getElementById('stat-risks').textContent = riskData.length;
+  document.getElementById('risk-count').textContent = `(${riskData.length})`;
+}
+
+async function loadSummary() {
+  const res = await fetch('/api/studio/summary');
+  const data = await res.json();
+  document.getElementById('project-name').textContent = data.name || '—';
+  document.getElementById('project-type').textContent = data.oneLiner || '';
+  document.getElementById('stat-apis').textContent = data.stats?.apiCount || 0;
+  document.getElementById('stat-models').textContent = data.stats?.modelCount || 0;
+  document.getElementById('stat-files').textContent = data.stats?.fileCount || 0;
+  document.getElementById('health-score').textContent = (data.healthScore || 0) + '/100';
+  const fill = document.getElementById('health-fill');
+  fill.style.width = (data.healthScore || 0) + '%';
+  fill.style.background = data.healthScore >= 80 ? '#4ecca3' : data.healthScore >= 60 ? '#f39c12' : '#e94560';
+}
+
+// ===== Graph Rendering (Force-Directed) =====
+function renderGraph() {
+  const svg = document.getElementById('graph-canvas');
+  const { width, height } = svg.getBoundingClientRect();
+  svg.innerHTML = '';
+
+  const nodes = (graphData.nodes || []).filter(n => n.type !== 'file' && n.type !== 'dependency');
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const edges = (graphData.edges || []).filter(e => nodeMap.has(e.source) && nodeMap.has(e.target));
+
+  if (nodes.length === 0) return;
+
+  // Initialize positions (circular layout)
+  nodes.forEach((n, i) => {
+    const angle = (i / nodes.length) * 2 * Math.PI;
+    const r = Math.min(width, height) * 0.35;
+    n._x = width / 2 + Math.cos(angle) * r;
+    n._y = height / 2 + Math.sin(angle) * r;
+    n._vx = 0;
+    n._vy = 0;
+  });
+
+  // Simple force simulation (run synchronously for speed)
+  for (let iter = 0; iter < 80; iter++) {
+    // Repulsion between all pairs
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        let dx = nodes[i]._x - nodes[j]._x;
+        let dy = nodes[i]._y - nodes[j]._y;
+        let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        let force = 800 / (dist * dist);
+        let fx = (dx / dist) * force;
+        let fy = (dy / dist) * force;
+        nodes[i]._vx += fx;
+        nodes[i]._vy += fy;
+        nodes[j]._vx -= fx;
+        nodes[j]._vy -= fy;
+      }
+    }
+
+    // Attraction along edges
+    for (const e of edges) {
+      const s = nodeMap.get(e.source);
+      const t = nodeMap.get(e.target);
+      if (!s || !t) continue;
+      let dx = t._x - s._x;
+      let dy = t._y - s._y;
+      let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      let force = (dist - 120) * 0.01;
+      let fx = (dx / dist) * force;
+      let fy = (dy / dist) * force;
+      s._vx += fx;
+      s._vy += fy;
+      t._vx -= fx;
+      t._vy -= fy;
+    }
+
+    // Center gravity
+    for (const n of nodes) {
+      n._vx += (width / 2 - n._x) * 0.001;
+      n._vy += (height / 2 - n._y) * 0.001;
+      n._x += n._vx * 0.4;
+      n._y += n._vy * 0.4;
+      n._vx *= 0.7;
+      n._vy *= 0.7;
+      // Bounds
+      n._x = Math.max(30, Math.min(width - 30, n._x));
+      n._y = Math.max(30, Math.min(height - 30, n._y));
+    }
+  }
+
+  // Render SVG
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('id', 'graph-group');
+
+  // Edges
+  for (const e of edges) {
+    const s = nodeMap.get(e.source);
+    const t = nodeMap.get(e.target);
+    if (!s || !t) continue;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', s._x);
+    line.setAttribute('y1', s._y);
+    line.setAttribute('x2', t._x);
+    line.setAttribute('y2', t._y);
+    line.setAttribute('stroke', '#333');
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('opacity', '0.4');
+    g.appendChild(line);
+  }
+
+  // Nodes
+  for (const n of nodes) {
+    const color = TYPE_COLORS[n.type] || TYPE_COLORS.unknown;
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    group.setAttribute('transform', `translate(${n._x}, ${n._y})`);
+    group.style.cursor = 'pointer';
+    group.addEventListener('click', () => showNodeDetail(n));
+    group.addEventListener('mouseenter', (evt) => showTooltip(evt, n));
+    group.addEventListener('mouseleave', hideTooltip);
+
+    // Circle node
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('r', n.type === 'module' ? 14 : n.type === 'api' || n.type === 'model' ? 10 : 7);
+    circle.setAttribute('fill', color);
+    circle.setAttribute('opacity', '0.85');
+    circle.setAttribute('stroke', selectedNode === n.id ? '#fff' : 'none');
+    circle.setAttribute('stroke-width', '2');
+    group.appendChild(circle);
+
+    // Label
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('y', n.type === 'module' ? 24 : 18);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#ccc');
+    text.setAttribute('font-size', n.type === 'module' ? '11' : '9');
+    text.setAttribute('font-family', 'Courier New, monospace');
+    const label = n.label.length > 20 ? n.label.slice(0, 18) + '..' : n.label;
+    text.textContent = label;
+    group.appendChild(text);
+
+    g.appendChild(group);
+  }
+
+  svg.appendChild(g);
+
+  // Pan & Zoom
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    transform.scale *= delta;
+    transform.scale = Math.max(0.2, Math.min(5, transform.scale));
+    applyTransform();
+  });
+
+  let dragging = false, lastX, lastY;
+  svg.addEventListener('mousedown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
+  svg.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    transform.x += e.clientX - lastX;
+    transform.y += e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    applyTransform();
+  });
+  svg.addEventListener('mouseup', () => { dragging = false; });
+  svg.addEventListener('mouseleave', () => { dragging = false; });
+}
+
+function applyTransform() {
+  const g = document.getElementById('graph-group');
+  if (g) g.setAttribute('transform', `translate(${transform.x},${transform.y}) scale(${transform.scale})`);
+}
+
+// ===== Sidebar Renderers =====
+function renderNodeTypeFilter() {
+  const list = document.getElementById('node-type-list');
+  const typeCounts = {};
+  for (const n of (graphData.nodes || [])) {
+    typeCounts[n.type] = (typeCounts[n.type] || 0) + 1;
+  }
+
+  list.innerHTML = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, count]) => `
+      <li class="node-type-item" onclick="filterByType('${type}')">
+        <div class="node-type-dot" style="background:${TYPE_COLORS[type] || '#555'}"></div>
+        <span>${TYPE_LABELS[type] || type}</span>
+        <span class="node-type-count">${count}</span>
+      </li>
+    `).join('');
+}
+
+function renderRiskList() {
+  const list = document.getElementById('risk-list');
+  list.innerHTML = riskData.slice(0, 20).map(r => `
+    <li class="risk-item" onclick="showRiskDetail('${r.id}')">
+      <span class="risk-badge risk-${r.severity}">${r.severity}</span>
+      ${escapeHtml(r.title)}
+    </li>
+  `).join('');
+}
+
+// ===== Node Detail Panel =====
+async function showNodeDetail(node) {
+  selectedNode = node.id;
+  renderGraph(); // Highlight selected
+
+  const panel = document.getElementById('panel');
+  panel.classList.add('open');
+  document.getElementById('panel-title').textContent = node.label;
+
+  // Fetch node detail
+  const res = await fetch('/api/studio/node/' + encodeURIComponent(node.id));
+  const data = await res.json();
+
+  let html = `<p><b>类型:</b> ${TYPE_LABELS[node.type] || node.type}</p>`;
+  if (node.filePath) html += `<p><b>文件:</b> ${escapeHtml(node.filePath)}</p>`;
+  if (node.language) html += `<p><b>语言:</b> ${node.language}</p>`;
+  if (node.module) html += `<p><b>模块:</b> ${node.module}</p>`;
+
+  if (data.outgoing?.length > 0) {
+    html += `<h3>输出关系 (${data.outgoing.length})</h3><ul>`;
+    data.outgoing.slice(0, 15).forEach(e => {
+      const target = data.neighbors?.find(n => n.id === e.target);
+      html += `<li>${e.relation} → ${escapeHtml(target?.label || e.target)}</li>`;
+    });
+    html += '</ul>';
+  }
+  if (data.incoming?.length > 0) {
+    html += `<h3>输入关系 (${data.incoming.length})</h3><ul>`;
+    data.incoming.slice(0, 15).forEach(e => {
+      const source = data.neighbors?.find(n => n.id === e.source);
+      html += `<li>${escapeHtml(source?.label || e.source)} → ${e.relation}</li>`;
+    });
+    html += '</ul>';
+  }
+
+  // Impact analysis button
+  html += `<div style="margin-top:16px"><button class="btn btn-primary btn-sm" onclick="showImpact('${encodeURIComponent(node.id)}')">🔍 影响分析</button></div>`;
+
+  document.getElementById('panel-body').innerHTML = html;
+}
+
+async function showImpact(encodedNodeId) {
+  const res = await fetch('/api/studio/impact/' + encodedNodeId);
+  const data = await res.json();
+
+  let html = `<h3>影响分析</h3>`;
+  html += `<p>${escapeHtml(data.summary || '')}</p>`;
+  html += `<p><b>直接影响:</b> ${data.directImpact?.length || 0} 个实体</p>`;
+  html += `<p><b>传递影响:</b> ${data.transitiveImpact?.length || 0} 个实体</p>`;
+  html += `<p><b>风险等级:</b> <span class="risk-badge risk-${data.riskLevel || 'low'}">${data.riskLevel || '?'}</span></p>`;
+
+  document.getElementById('panel-body').innerHTML += html;
+}
+
+function showRiskDetail(riskId) {
+  const risk = riskData.find(r => r.id === riskId);
+  if (!risk) return;
+
+  const panel = document.getElementById('panel');
+  panel.classList.add('open');
+  document.getElementById('panel-title').textContent = '⚠️ 风险详情';
+  document.getElementById('panel-body').innerHTML = `
+    <p><span class="risk-badge risk-${risk.severity}">${risk.severity}</span> <b>${risk.category}</b></p>
+    <h3>${escapeHtml(risk.title)}</h3>
+    <p>${escapeHtml(risk.description)}</p>
+    ${risk.suggestion ? `<h3>建议</h3><p>${escapeHtml(risk.suggestion)}</p>` : ''}
+    <p style="color:var(--text-muted);margin-top:8px">置信度: ${(risk.confidence * 100).toFixed(0)}%</p>
+  `;
+}
+
+// ===== Perspective Reports =====
+document.getElementById('perspective-tabs').addEventListener('click', async (e) => {
+  const tab = e.target.closest('.perspective-tab');
+  if (!tab) return;
+
+  // Update active state
+  document.querySelectorAll('.perspective-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+
+  const view = tab.dataset.view;
+  const perspective = tab.dataset.perspective;
+
+  if (view === 'graph') {
+    document.getElementById('graph-canvas').style.display = '';
+    document.getElementById('report-view').style.display = 'none';
+    renderGraph();
+    return;
+  }
+
+  if (!graphData.nodes?.length) return;
+
+  // Show report view
+  document.getElementById('graph-canvas').style.display = 'none';
+  document.getElementById('report-view').style.display = 'block';
+  document.getElementById('report-content').innerHTML = '<div class="loading-text">生成报告中...</div>';
+
+  const res = await fetch('/api/studio/report/' + perspective);
+  const report = await res.json();
+
+  let html = `<h1 style="color:var(--accent);margin-bottom:8px">${escapeHtml(report.title || '')}</h1>`;
+  html += `<p style="color:var(--text-secondary);margin-bottom:24px">${escapeHtml(report.summary || '')}</p>`;
+
+  for (const section of (report.sections || [])) {
+    html += `<h2 style="color:var(--accent);margin-top:24px;margin-bottom:8px">${escapeHtml(section.heading)}</h2>`;
+    html += `<div style="line-height:1.8">${markdownToHtml(section.content)}</div>`;
+    if (section.visualization) {
+      html += `<pre style="background:var(--bg-input);padding:12px;border-radius:8px;margin:12px 0;font-size:11px;overflow-x:auto">${escapeHtml(section.visualization.data)}</pre>`;
+    }
+  }
+
+  html += `<p style="color:var(--text-muted);margin-top:24px;font-size:11px">生成时间: ${report.generatedAt || new Date().toISOString()}</p>`;
+  document.getElementById('report-content').innerHTML = html;
+});
+
+// ===== Theme Toggle =====
+function toggleTheme() {
+  currentTheme = currentTheme === 'pixel' ? 'professional' : 'pixel';
+  document.documentElement.setAttribute('data-theme', currentTheme === 'pixel' ? '' : 'professional');
+}
+
+function togglePanel() {
+  document.getElementById('panel').classList.toggle('open');
+}
+
+function filterByType(type) {
+  // TODO: implement filter highlighting
+}
+
+// ===== Tooltip =====
+function showTooltip(evt, node) {
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `<b>${escapeHtml(node.label)}</b><br>` +
+    `类型: ${TYPE_LABELS[node.type] || node.type}<br>` +
+    (node.module ? `模块: ${node.module}<br>` : '') +
+    (node.filePath ? `文件: ${escapeHtml(node.filePath)}` : '');
+  tooltip.style.left = (evt.clientX + 15) + 'px';
+  tooltip.style.top = (evt.clientY - 10) + 'px';
+  tooltip.classList.add('visible');
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+// ===== WebSocket for live updates =====
+function connectWS() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(protocol + '//' + location.host + '/ws');
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'agent:update') updateAgents(msg.payload);
+      else if (msg.type === 'graph:update') { graphData = { ...graphData, ...msg.payload }; renderGraph(); }
+      else if (msg.type === 'scan:progress') {
+        document.getElementById('loading-detail').textContent = msg.payload.detail || '';
+      }
+      else if (msg.type === 'log') {
+        console.log(`[${msg.payload.level}] ${msg.payload.message}`);
+      }
+    } catch {}
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+
+function updateAgents(agents) {
+  if (!Array.isArray(agents)) return;
+  const agentMap = { 'parser-croc': 'agent-parser', 'analyzer-croc': 'agent-analyzer', 'planner-croc': 'agent-planner', 'tester-croc': 'agent-tester', 'healer-croc': 'agent-healer', 'reporter-croc': 'agent-reporter' };
+  for (const a of agents) {
+    const el = document.getElementById(agentMap[a.id]);
+    if (el) { el.className = 'agent-status ' + a.status; }
+  }
+}
+
+// ===== Helpers =====
+function escapeHtml(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function markdownToHtml(md) {
+  if (!md) return '';
+  let html = escapeHtml(md);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/`([^`]+)`/g, '<code style="background:var(--bg-input);padding:2px 4px;border-radius:3px">$1</code>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+// ===== Init =====
+connectWS();
+</script>
+</body>
+</html>
