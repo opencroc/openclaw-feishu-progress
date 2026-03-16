@@ -52,6 +52,7 @@ export async function createOffice(theme) {
   buildFloor();
   buildWalls();
   buildGlassPartitions();
+  buildPondZone();
   buildDesks(6);
   buildServerRack();
   buildCoffeeMachine();
@@ -164,8 +165,70 @@ function buildGlassPartitions() {
    Agent Desks — Each agent gets a desk with monitor and chair
    ═══════════════════════════════════════════════════════════════════════════════ */
 export const DESK_POSITIONS = [];
+export const POND_POSITIONS = [];
+const DESK_INDICATORS = new Map();
+
+function buildPondZone() {
+  const pond = new THREE.Group();
+  pond.name = 'agent-pond';
+
+  const centerX = -9;
+  const centerZ = 6.2;
+
+  const rim = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.4, 3.5, 0.16, 24),
+    MAT.frame,
+  );
+  rim.position.set(centerX, 0.25, centerZ);
+  rim.receiveShadow = true;
+  pond.add(rim);
+
+  const water = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.1, 3.2, 0.1, 24),
+    new THREE.MeshStandardMaterial({
+      color: currentTheme === 'dark' ? 0x0f3a5d : 0x7dd3fc,
+      roughness: 0.18,
+      metalness: 0.2,
+      transparent: true,
+      opacity: currentTheme === 'dark' ? 0.72 : 0.52,
+      emissive: currentTheme === 'dark' ? 0x0ea5e9 : 0x0369a1,
+      emissiveIntensity: currentTheme === 'dark' ? 0.16 : 0.06,
+    }),
+  );
+  water.position.set(centerX, 0.3, centerZ);
+  pond.add(water);
+
+  // Pixel-style stepping stones around the pond edge.
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const r = 3.7 + (i % 2) * 0.25;
+    const stone = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.06, 0.32),
+      MAT.deskTop,
+    );
+    stone.position.set(centerX + Math.cos(a) * r, 0.23, centerZ + Math.sin(a) * r);
+    stone.rotation.y = a * 0.7;
+    stone.receiveShadow = true;
+    pond.add(stone);
+  }
+
+  POND_POSITIONS.length = 0;
+  const count = 24;
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const r = 1.55 + (i % 3) * 0.34;
+    POND_POSITIONS.push({
+      x: centerX + Math.cos(a) * r,
+      z: centerZ + Math.sin(a) * r,
+    });
+  }
+
+  officeGroup.add(pond);
+}
 
 function buildDesks(count) {
+  DESK_POSITIONS.length = 0;
+  DESK_INDICATORS.clear();
   const rows = 2;
   const cols = Math.ceil(count / rows);
   const xStart = -2;
@@ -304,8 +367,40 @@ function buildSingleDesk(x, z, idx) {
     desk.add(mug);
   }
 
+  // Occupancy beacon near each desk (idle=dim, occupied=bright).
+  const indicator = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, 0.04, 12),
+    new THREE.MeshStandardMaterial({
+      color: currentTheme === 'dark' ? 0x475569 : 0x94a3b8,
+      roughness: 0.25,
+      metalness: 0.4,
+      emissive: currentTheme === 'dark' ? 0x0f172a : 0x64748b,
+      emissiveIntensity: 0.12,
+    }),
+  );
+  indicator.position.set(1.0, 1.08, -0.32);
+  desk.add(indicator);
+  DESK_INDICATORS.set(idx, indicator);
+
   desk.position.set(x, 0.2, z);
   officeGroup.add(desk);
+}
+
+export function setDeskOccupied(index, occupied) {
+  const indicator = DESK_INDICATORS.get(index);
+  if (!indicator) return;
+  const mat = indicator.material;
+  if (!mat) return;
+
+  if (occupied) {
+    mat.color.setHex(currentTheme === 'dark' ? 0x34d399 : 0x059669);
+    mat.emissive.setHex(currentTheme === 'dark' ? 0x34d399 : 0x047857);
+    mat.emissiveIntensity = currentTheme === 'dark' ? 0.62 : 0.35;
+  } else {
+    mat.color.setHex(currentTheme === 'dark' ? 0x475569 : 0x94a3b8);
+    mat.emissive.setHex(currentTheme === 'dark' ? 0x0f172a : 0x64748b);
+    mat.emissiveIntensity = 0.12;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -798,6 +893,7 @@ export function updateOfficeLighting(theme) {
   buildFloor();
   buildWalls();
   buildGlassPartitions();
+  buildPondZone();
   buildDesks(6);
   buildServerRack();
   buildCoffeeMachine();

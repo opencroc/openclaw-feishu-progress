@@ -213,42 +213,6 @@ body{background:#000;color:var(--text)}
 .quality-item .q-label{font-size:9px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-subtle)}
 .quality-item .q-value{font-size:14px;font-weight:700;color:var(--blue);margin-top:2px}
 
-/* ─── Bottom Bar ───────────────────────────────────────────────────────────── */
-.bottom-bar{position:fixed;bottom:12px;left:12px;right:12px;height:216px;z-index:var(--z-panel);display:flex;flex-direction:column;background:var(--bg-glass);backdrop-filter:var(--blur-md);-webkit-backdrop-filter:var(--blur-md);border:1px solid var(--border-glass);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg),var(--shadow-inset);overflow:hidden;transition:all var(--transition-slow)}
-.bottom-bar.collapsed{height:40px}
-.bottom-bar.collapsed .desk-row{opacity:0;pointer-events:none}
-.bottom-bar-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;flex-shrink:0;border-bottom:1px solid var(--border);cursor:pointer}
-.bottom-bar-header h3{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);font-weight:600}
-.bottom-bar-header .toggle-icon{color:var(--text-subtle);transition:transform var(--transition)}
-.bottom-bar.collapsed .toggle-icon{transform:rotate(180deg)}
-.desk-row{flex:1;display:flex;gap:8px;padding:8px 12px;overflow-x:auto;overflow-y:hidden;transition:opacity var(--transition)}
-
-/* Desk Cards */
-.desk-card{flex:0 0 200px;display:flex;flex-direction:column;gap:6px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;position:relative;overflow:hidden;transition:all var(--transition)}
-.desk-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);opacity:0;transition:opacity var(--transition)}
-.desk-card:hover{border-color:var(--border-accent);transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.desk-card:hover::before{opacity:1}
-.desk-card.working::before{background:var(--accent);opacity:1}
-.desk-card.error::before,.desk-card.failed::before{background:var(--red);opacity:1}
-.desk-card.thinking::before{background:var(--purple);opacity:1}
-.desk-card.testing::before{background:var(--blue);opacity:1}
-.desk-card .card-top{display:flex;align-items:center;gap:8px}
-.desk-card .card-avatar{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius-sm)}
-.desk-card .card-avatar svg{width:20px;height:20px}
-.desk-card .card-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.desk-card .card-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.desk-card .card-role{font-size:10px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.04em}
-.desk-card .status-badge{position:absolute;top:8px;right:8px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:2px 6px;border-radius:var(--radius-xs)}
-.desk-card .status-badge.working{background:var(--accent-bg);color:var(--accent)}
-.desk-card .status-badge.testing{background:var(--blue-bg);color:var(--blue)}
-.desk-card .status-badge.thinking{background:var(--purple-bg);color:var(--purple)}
-.desk-card .status-badge.error,.desk-card .status-badge.failed{background:var(--red-bg);color:var(--red)}
-.desk-card .status-badge.done,.desk-card .status-badge.passed{background:var(--accent-bg);color:var(--accent)}
-.desk-card .status-badge.idle{background:var(--bg-hover);color:var(--text-subtle)}
-.desk-card .card-task{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:16px}
-.desk-card .progress-bar{height:3px;background:var(--bg-hover);border-radius:2px;overflow:hidden}
-.desk-card .progress-bar .fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--cyan));transition:width 0.4s var(--ease-out-expo)}
-
 /* ─── File Preview Modal ───────────────────────────────────────────────────── */
 .file-preview{position:fixed;inset:0;z-index:var(--z-modal);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity var(--transition)}
 .file-preview.visible{opacity:1;pointer-events:auto}
@@ -307,8 +271,8 @@ body{background:#000;color:var(--text)}
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 @media(max-width:1200px){.sidebar{width:180px}.right-panel{width:280px}.stats{display:none}}
 @media(max-width:960px){.sidebar{display:none}.right-panel{width:260px}}
-@media(max-width:768px){.header{padding:0 10px;gap:4px}.right-panel{display:none}.bottom-bar{height:180px}}
-@media print{.header,.sidebar,.bottom-bar,.right-panel,.shortcut-legend,.tooltip,.file-preview,.loading-overlay,.toast-container{display:none!important}#three-canvas{position:static;width:100%;height:auto}}
+@media(max-width:768px){.header{padding:0 10px;gap:4px}.right-panel{display:none}}
+@media print{.header,.sidebar,.right-panel,.shortcut-legend,.tooltip,.file-preview,.loading-overlay,.toast-container{display:none!important}#three-canvas{position:static;width:100%;height:auto}}
 </style>
 </head>
 <body>
@@ -371,12 +335,6 @@ body{background:#000;color:var(--text)}
   <div class="panel-content hidden" id="file-list"></div>
   <div class="panel-content hidden" id="results-panel"></div>
   <div class="panel-content hidden" id="reports-panel"></div>
-</div>
-
-<!-- Bottom Bar -->
-<div class="bottom-bar" id="bottom-bar">
-  <div class="bottom-bar-header" id="bottom-bar-toggle"><h3>Agent Desks</h3><svg class="toggle-icon" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 10l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-  <div class="desk-row" id="desk-row"></div>
 </div>
 
 <!-- File Preview -->
@@ -519,26 +477,38 @@ function connectWS(){
 }
 function handleWS(msg){
   switch(msg.type){
-    case'agent:update':state.set({agents:msg.data});agentMgr.sync(msg.data);ui.updateDeskCards(msg.data);ui.updateSidebar(null,msg.data);break;
-    case'graph:update':state.set({graph:msg.data});graphViz.update(msg.data);ui.updateSidebar(msg.data,null);ui.updateStats(msg.data);break;
-    case'log':ui.addLog(msg.data.message,msg.data.level);break;
-    case'files:generated':state.set({generatedFiles:msg.data});ui.updateFileList(msg.data);break;
+    case'agent:update':state.set({agents:msg.payload});agentMgr.sync(msg.payload);ui.updateSidebar(null,msg.payload);break;
+    case'agent:assigned':{
+      const transfer=agentMgr.applyAssignmentEvent(msg.payload);
+      if(transfer&&particleMgr) particleMgr.triggerAgentTransfer(transfer.from,transfer.to,transfer.kind);
+      if(msg.payload?.name) ui.addLog(`🐊 ${esc(msg.payload.name)} 被召唤到工位`+(msg.payload.currentTask?` — ${esc(msg.payload.currentTask)}`:''),'info');
+      break;
+    }
+    case'agent:released':{
+      const transfer=agentMgr.applyReleaseEvent(msg.payload);
+      if(transfer&&particleMgr) particleMgr.triggerAgentTransfer(transfer.from,transfer.to,transfer.kind);
+      if(msg.payload?.name) ui.addLog(`🏊 ${esc(msg.payload.name)} 返回鳄鱼池`,'info');
+      break;
+    }
+    case'graph:update':state.set({graph:msg.payload});graphViz.update(msg.payload);ui.updateSidebar(msg.payload,null);ui.updateStats(msg.payload);break;
+    case'log':ui.addLog(msg.payload.message,msg.payload.level);break;
+    case'files:generated':state.set({generatedFiles:msg.payload});ui.updateFileList(msg.payload);break;
     case'pipeline:complete':state.set({running:false});updateBtns();
-      if(msg.data.error)ui.addLog('Pipeline failed: '+msg.data.error,'error');
+      if(msg.payload.error)ui.addLog('Pipeline failed: '+msg.payload.error,'error');
       else{ui.addLog('✅ Pipeline complete','success',true);ui.showToast('Pipeline completed','success');particleMgr.triggerCelebration()}
       fetchProject();break;
-    case'test:complete':state.set({running:false,testMetrics:msg.data.metrics,testQuality:msg.data.quality});updateBtns();
-      ui.updateResults(msg.data);ui.addLog(`Tests: ${msg.data.metrics?.passed||0}✓ ${msg.data.metrics?.failed||0}✗`,'info',true);
-      ui.showToast(`Tests: ${msg.data.metrics?.passed||0}✓ ${msg.data.metrics?.failed||0}✗`,msg.data.metrics?.failed?'warning':'success');break;
-    case'reports:generated':state.set({running:false,reports:msg.data});updateBtns();
-      ui.updateReports(msg.data);ui.addLog('📊 '+msg.data.length+' reports generated','success',true);break;
+    case'test:complete':state.set({running:false,testMetrics:msg.payload.metrics,testQuality:msg.payload.quality});updateBtns();
+      ui.updateResults(msg.payload);ui.addLog(`Tests: ${msg.payload.metrics?.passed||0}✓ ${msg.payload.metrics?.failed||0}✗`,'info',true);
+      ui.showToast(`Tests: ${msg.payload.metrics?.passed||0}✓ ${msg.payload.metrics?.failed||0}✗`,msg.payload.metrics?.failed?'warning':'success');break;
+    case'reports:generated':state.set({running:false,reports:msg.payload});updateBtns();
+      ui.updateReports(msg.payload);ui.addLog('📊 '+msg.payload.length+' reports generated','success',true);break;
   }
 }
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 function updateAll(){
   const g=state.get('graph'),a=state.get('agents');
-  ui.updateSidebar(g,a);ui.updateStats(g);ui.updateDeskCards(a);
+  ui.updateSidebar(g,a);ui.updateStats(g);
   if(a) agentMgr.sync(a);
   if(g) graphViz.update(g);
 }
@@ -559,7 +529,6 @@ document.getElementById('view-3d').addEventListener('click',()=>setView('3d'));
 document.getElementById('view-graph').addEventListener('click',()=>setView('graph'));
 document.getElementById('theme-toggle').addEventListener('click',toggleTheme);
 document.getElementById('sidebar-toggle').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('collapsed'));
-document.getElementById('bottom-bar-toggle').addEventListener('click',()=>document.getElementById('bottom-bar').classList.toggle('collapsed'));
 document.getElementById('fp-close').addEventListener('click',()=>document.getElementById('file-preview').classList.remove('visible'));
 document.getElementById('fp-backdrop').addEventListener('click',()=>document.getElementById('file-preview').classList.remove('visible'));
 document.querySelectorAll('.panel-tabs .tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.panel-tabs .tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');const tgt=tab.dataset.tab;document.getElementById('log-list').classList.toggle('hidden',tgt!=='log');document.getElementById('file-list').classList.toggle('hidden',tgt!=='files');document.getElementById('results-panel').classList.toggle('hidden',tgt!=='results');document.getElementById('reports-panel').classList.toggle('hidden',tgt!=='reports')})});

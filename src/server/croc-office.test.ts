@@ -33,6 +33,29 @@ describe('CrocOffice', () => {
     expect(agent!.currentTask).toBe('Parsing models...');
   });
 
+  it('should emit assignment and release events for active transitions', () => {
+    const office = new CrocOffice(config, process.cwd());
+    const sent: Array<{ type: string; payload: unknown }> = [];
+    const fakeWs = {
+      send: (raw: string) => {
+        sent.push(JSON.parse(raw));
+      },
+    };
+
+    office.addClient(fakeWs as any);
+
+    office.updateAgent('parser-croc', { status: 'working', currentTask: 'Scanning...' });
+    office.updateAgent('parser-croc', { status: 'done', currentTask: 'Done' });
+
+    const assigned = sent.find((m) => m.type === 'agent:assigned');
+    const released = sent.find((m) => m.type === 'agent:released');
+
+    expect(assigned).toBeDefined();
+    expect((assigned?.payload as any).id).toBe('parser-croc');
+    expect(released).toBeDefined();
+    expect((released?.payload as any).id).toBe('parser-croc');
+  });
+
   it('should invalidate cache', () => {
     const office = new CrocOffice(config, process.cwd());
     office.invalidateCache();

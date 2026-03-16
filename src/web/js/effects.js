@@ -342,4 +342,120 @@ export class ParticleManager {
 
     this.systems.push(sys);
   }
+
+  triggerAgentTransfer(from, to, kind = 'assigned') {
+    if (!from || !to) return;
+
+    const startColor = kind === 'released' ? 0xfbbf24 : 0x60a5fa;
+    const endColor = kind === 'released' ? 0x34d399 : 0x22d3ee;
+
+    this._triggerPulse(from.x, 0.34, from.z, startColor, kind === 'released' ? 0.8 : 1.1);
+    this._triggerPulse(to.x, 0.34, to.z, endColor, kind === 'released' ? 1.2 : 0.9, 180);
+
+    // Expanding ripple at the pond side (departure or arrival).
+    const pondSide = kind === 'assigned' ? from : to;
+    if (pondSide.x != null) this.triggerPondRipple(pondSide.x, pondSide.z ?? 6.2);
+  }
+
+  triggerPondRipple(x, z) {
+    const geo = new THREE.RingGeometry(0.18, 0.32, 24);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x0ea5e9,
+      transparent: true,
+      opacity: 0.65,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const ring = new THREE.Mesh(geo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 0.31, z);
+    this.scene.add(ring);
+
+    let life = 0;
+    const sys = {
+      mesh: ring,
+      update: (dt) => {
+        life += dt;
+        if (life >= 1.1) {
+          this.scene.remove(ring);
+          geo.dispose();
+          mat.dispose();
+          const idx = this.systems.indexOf(sys);
+          if (idx >= 0) this.systems.splice(idx, 1);
+          return;
+        }
+        ring.scale.setScalar(1 + life * 3.2);
+        ring.material.opacity = Math.max(0, 0.65 * (1 - life / 1.1));
+      },
+    };
+    this.systems.push(sys);
+  }
+
+  _triggerPulse(x, y, z, colorHex, lift = 1, delayMs = 0) {
+    const spawn = () => {
+      const count = 38;
+      const positions = new Float32Array(count * 3);
+      const velocities = new Float32Array(count * 3);
+
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+
+        const a = (i / count) * Math.PI * 2;
+        const speed = 0.8 + Math.random() * 1.4;
+        velocities[i * 3] = Math.cos(a) * speed;
+        velocities[i * 3 + 1] = 0.8 + Math.random() * lift;
+        velocities[i * 3 + 2] = Math.sin(a) * speed;
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 0.09,
+        color: colorHex,
+        transparent: true,
+        opacity: 0.92,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const points = new THREE.Points(geo, mat);
+      this.scene.add(points);
+
+      let life = 0;
+      const ttl = 0.68;
+      const sys = {
+        mesh: points,
+        update: (dt) => {
+          life += dt;
+          if (life >= ttl) {
+            this.scene.remove(points);
+            geo.dispose();
+            mat.dispose();
+            const idx = this.systems.indexOf(sys);
+            if (idx >= 0) this.systems.splice(idx, 1);
+            return;
+          }
+
+          const arr = geo.attributes.position.array;
+          for (let i = 0; i < count; i++) {
+            arr[i * 3] += velocities[i * 3] * dt;
+            arr[i * 3 + 1] += velocities[i * 3 + 1] * dt;
+            arr[i * 3 + 2] += velocities[i * 3 + 2] * dt;
+            velocities[i * 3 + 1] -= 2.8 * dt;
+          }
+          geo.attributes.position.needsUpdate = true;
+          mat.opacity = Math.max(0, 0.92 - (life / ttl) * 0.92);
+        },
+      };
+
+      this.systems.push(sys);
+    };
+
+    if (delayMs > 0) {
+      setTimeout(spawn, delayMs);
+    } else {
+      spawn();
+    }
+  }
 }

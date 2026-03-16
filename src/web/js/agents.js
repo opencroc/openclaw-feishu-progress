@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { DESK_POSITIONS } from './office.js';
+import { DESK_POSITIONS, POND_POSITIONS, setDeskOccupied } from './office.js';
 
 /* ─── Module state ─────────────────────────────────────────────────────────── */
 const agents = new Map(); // name → { group, parts, label, bubble, anim }
@@ -37,6 +37,17 @@ const STATUS_ANIM = {
   passed:   { speed: 1.0, bobAmp: 0.05, rotSpeed: 0.2 },
 };
 
+const ACTIVE_STATUSES = new Set([
+  'working',
+  'testing',
+  'thinking',
+  'scanning',
+  'navigating',
+  'interacting',
+  'asserting',
+  'reporting',
+]);
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    AgentManager — Creates, updates, removes 3D robot agents
    ═══════════════════════════════════════════════════════════════════════════════ */
@@ -45,6 +56,8 @@ export class AgentManager {
     scene = sceneRef;
     this._time = 0;
     this._bubbleTimers = new Map();
+    this._deskAssignments = new Map();
+    this._eventAssignments = new Map();
     this._initCSS2D();
   }
 
@@ -67,6 +80,7 @@ export class AgentManager {
   /** Sync agents from backend data */
   sync(agentData) {
     const current = new Set();
+    const active = new Set();
 
     agentData.forEach((a, i) => {
       current.add(a.name);
@@ -74,11 +88,51 @@ export class AgentManager {
         this._createRobot(a, i, agentData.length);
       }
       this._updateStatus(a.name, a.status);
+      const eventActive = this._eventAssignments.get(a.name);
+      const isActive = typeof eventActive === 'boolean' ? eventActive : this._isActiveStatus(a.status);
+      if (isActive) active.add(a.name);
+    });
+
+    // Drop stale event-assignment flags for removed agents.
+    for (const name of this._eventAssignments.keys()) {
+      if (!current.has(name)) this._eventAssignments.delete(name);
+    }
+
+    // Release desks for idle/done agents.
+    for (const [name, deskIdx] of this._deskAssignments) {
+      if (!current.has(name) || !active.has(name)) {
+        this._deskAssignments.delete(name);
+      }
+    }
+
+    // Assign desks to active agents that don't have one yet.
+    active.forEach((name) => {
+      if (!this._deskAssignments.has(name)) {
+        const deskIdx = this._nextFreeDesk();
+        if (deskIdx >= 0) this._deskAssignments.set(name, deskIdx);
+      }
+    });
+
+    this._syncDeskOccupancy();
+
+    // Update movement targets by current allocation.
+    current.forEach((name) => {
+      const agent = agents.get(name);
+      if (!agent) return;
+      const deskIdx = this._deskAssignments.get(name);
+      if (typeof deskIdx === 'number' && DESK_POSITIONS[deskIdx]) {
+        const desk = DESK_POSITIONS[deskIdx];
+        this._setTarget(agent, desk.x, desk.z + 1.2, 'desk', desk);
+      } else {
+        const pond = POND_POSITIONS[agent.pondSlot % Math.max(1, POND_POSITIONS.length)] || { x: -9, z: 6.2 };
+        this._setTarget(agent, pond.x, pond.z, 'pond');
+      }
     });
 
     // Remove stale agents
     for (const [name] of agents) {
       if (!current.has(name)) {
+        this._deskAssignments.delete(name);
         this._removeRobot(name);
       }
     }
@@ -87,12 +141,120 @@ export class AgentManager {
     this._scheduleBubbles(agentData);
   }
 
+  applyAssignmentEvent(payload) {
+    const name = payload?.name;
+    if (!name || !agents.has(name)) return null;
+
+    this._eventAssignments.set(name, true);
+    if (!this._deskAssignments.has(name)) {
+      const deskIdx = this._nextFreeDesk();
+      if (deskIdx >= 0) this._deskAssignments.set(name, deskIdx);
+    }
+
+    const agent = agents.get(name);
+    const deskIdx = this._deskAssignments.get(name);
+    if (!agent || typeof deskIdx !== 'number' || !DESK_POSITIONS[deskIdx]) return null;
+
+    const desk = DESK_POSITIONS[deskIdx];
+    const from = { x: agent.baseX, z: agent.baseZ };
+    this._setTarget(agent, desk.x, desk.z + 1.2, 'desk', desk);
+    this._syncDeskOccupancy();
+    this._flashSummon(name);
+
+    return { from, to: { x: desk.x, z: desk.z + 1.2 }, kind: 'assigned' };
+  }
+
+  applyReleaseEvent(payload) {
+    const name = payload?.name;
+    if (!name || !agents.has(name)) return null;
+
+    this._eventAssignments.set(name, false);
+    this._deskAssignments.delete(name);
+
+    const agent = agents.get(name);
+    if (!agent) return null;
+
+    const pond = POND_POSITIONS[agent.pondSlot % Math.max(1, POND_POSITIONS.length)] || { x: -9, z: 6.2 };
+    const from = { x: agent.baseX, z: agent.baseZ };
+    this._setTarget(agent, pond.x, pond.z, 'pond');
+    this._syncDeskOccupancy();
+
+    return { from, to: { x: pond.x, z: pond.z }, kind: 'released' };
+  }
+
+  _flashSummon(name) {
+    const agent = agents.get(name);
+    if (!agent) return;
+
+    // Brief glow spike
+    if (agent.parts.glow) {
+      const prev = agent.parts.glow.intensity;
+      agent.parts.glow.intensity = 1.9;
+      setTimeout(() => {
+        const a = agents.get(name);
+        if (a && a.parts.glow) a.parts.glow.intensity = prev;
+      }, 700);
+    }
+
+    // Expanding ring at robot feet (blue for assignment)
+    const ringGeo = new THREE.TorusGeometry(0.3, 0.04, 8, 20);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x60a5fa, transparent: true, opacity: 0.88, depthWrite: false,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(agent.baseX, 0.24, agent.baseZ);
+    scene.add(ring);
+
+    let life = 0;
+    const ttl = 0.78;
+    const tick = () => {
+      life += 0.016;
+      ring.position.set(agent.baseX, 0.24, agent.baseZ);
+      ring.scale.setScalar(1 + (life / ttl) * 4.5);
+      ring.material.opacity = Math.max(0, 0.88 * (1 - life / ttl));
+      if (life < ttl) {
+        requestAnimationFrame(tick);
+      } else {
+        scene.remove(ring);
+        ringGeo.dispose();
+        ringMat.dispose();
+      }
+    };
+    requestAnimationFrame(tick);
+  }
+
   /** Update all agents each frame */
   update(dt) {
     this._time += dt;
 
     for (const [name, agent] of agents) {
       const anim = STATUS_ANIM[agent.status] || STATUS_ANIM.idle;
+
+      let moveTargetX = agent.targetX;
+      let moveTargetZ = agent.targetZ;
+      if (agent.path.length) {
+        moveTargetX = agent.path[0].x;
+        moveTargetZ = agent.path[0].z;
+      }
+
+      // Move toward target zone.
+      const dx = moveTargetX - agent.baseX;
+      const dz = moveTargetZ - agent.baseZ;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.01) {
+        const speed = agent.zone === 'desk' ? 4.2 : 2.6;
+        const step = Math.min(1, (dt * speed) / dist);
+        agent.baseX += dx * step;
+        agent.baseZ += dz * step;
+        agent.group.lookAt(new THREE.Vector3(moveTargetX, 0.2, moveTargetZ));
+      } else if (agent.path.length) {
+        agent.path.shift();
+      } else if (agent.zone === 'desk' && agent.deskPos) {
+        agent.group.lookAt(new THREE.Vector3(agent.deskPos.x, 0.2, agent.deskPos.z));
+      } else if (agent.zone === 'pond') {
+        agent.group.lookAt(new THREE.Vector3(-9, 0.2, 6.2));
+      }
 
       // Bobbing
       const bobY = Math.sin(this._time * anim.speed * 2) * anim.bobAmp;
@@ -311,14 +473,13 @@ export class AgentManager {
     group.add(shadow);
 
     /* ── Position ────────────────────────────────────────────────────────── */
-    const desk = DESK_POSITIONS[index] || { x: index * 3 - 6, z: 0 };
-    const x = desk.x;
-    const z = desk.z + 1.2; // Position in front of desk (in chair)
+    const pondSlot = index % Math.max(1, POND_POSITIONS.length);
+    const pond = POND_POSITIONS[pondSlot] || { x: -9, z: 6.2 };
+    const x = pond.x;
+    const z = pond.z;
 
     group.position.set(x, 0.2, z);
-
-    // Point toward desk
-    group.lookAt(new THREE.Vector3(desk.x, 0.2, desk.z));
+    group.lookAt(new THREE.Vector3(-9, 0.2, 6.2));
 
     scene.add(group);
 
@@ -346,7 +507,12 @@ export class AgentManager {
       baseX: x,
       baseY: 0.2,
       baseZ: z,
-      deskPos: desk,
+      deskPos: null,
+      pondSlot,
+      zone: 'pond',
+      targetX: x,
+      targetZ: z,
+      path: [],
     });
   }
 
@@ -369,6 +535,62 @@ export class AgentManager {
     }
   }
 
+  _isActiveStatus(status) {
+    return ACTIVE_STATUSES.has(status || 'idle');
+  }
+
+  _nextFreeDesk() {
+    const used = new Set(this._deskAssignments.values());
+    for (let i = 0; i < DESK_POSITIONS.length; i++) {
+      if (!used.has(i)) return i;
+    }
+    return -1;
+  }
+
+  _setTarget(agent, x, z, zone, deskPos = null) {
+    const changed = zone !== agent.zone || Math.hypot(agent.targetX - x, agent.targetZ - z) > 0.06;
+    if (!changed) {
+      agent.deskPos = deskPos;
+      return;
+    }
+
+    agent.targetX = x;
+    agent.targetZ = z;
+    agent.zone = zone;
+    agent.deskPos = deskPos;
+    agent.path = this._buildPath(agent, x, z, zone);
+  }
+
+  _buildPath(agent, targetX, targetZ, zone) {
+    const path = [];
+    const corridorZ = 2.6;
+    const pondGateX = -6.4;
+
+    const nearCorridor = Math.abs(agent.baseZ - corridorZ) < 0.6;
+    if (!nearCorridor) {
+      path.push({ x: agent.baseX, z: corridorZ });
+    }
+
+    if (zone === 'desk') {
+      path.push({ x: targetX, z: corridorZ });
+      path.push({ x: targetX, z: targetZ });
+      return path;
+    }
+
+    path.push({ x: pondGateX, z: corridorZ + 1.1 });
+    path.push({ x: targetX, z: targetZ });
+    return path;
+  }
+
+  _syncDeskOccupancy() {
+    for (let i = 0; i < DESK_POSITIONS.length; i++) {
+      setDeskOccupied(i, false);
+    }
+    for (const deskIdx of this._deskAssignments.values()) {
+      setDeskOccupied(deskIdx, true);
+    }
+  }
+
   /* ═════════════════════════════════════════════════════════════════════════
      Remove Robot
      ═════════════════════════════════════════════════════════════════════════ */
@@ -377,6 +599,7 @@ export class AgentManager {
     if (!agent) return;
     scene.remove(agent.group);
     agents.delete(name);
+    this._syncDeskOccupancy();
 
     // Clean bubble timer
     const bt = this._bubbleTimers.get(name);

@@ -77,6 +77,11 @@ export class CrocOffice {
   private lastExecutionQuality: ExecutionQualityGateResult | null = null;
   private lastReports: ReportOutput[] = [];
 
+  private static readonly ACTIVE_AGENT_STATUSES = new Set<CrocAgent['status']>([
+    'working',
+    'thinking',
+  ]);
+
   constructor(config: OpenCrocConfig, cwd: string) {
     this.config = config;
     this.cwd = cwd;
@@ -118,9 +123,35 @@ export class CrocOffice {
   updateAgent(id: string, update: Partial<CrocAgent>): void {
     const agent = this.agents.find((a) => a.id === id);
     if (agent) {
+      const wasActive = this.isAgentActive(agent.status);
       Object.assign(agent, update);
+      const isActive = this.isAgentActive(agent.status);
       this.broadcast('agent:update', this.agents);
+
+      if (!wasActive && isActive) {
+        this.broadcast('agent:assigned', {
+          id: agent.id,
+          name: agent.name,
+          role: agent.role,
+          status: agent.status,
+          currentTask: agent.currentTask ?? null,
+          at: Date.now(),
+        });
+      } else if (wasActive && !isActive) {
+        this.broadcast('agent:released', {
+          id: agent.id,
+          name: agent.name,
+          role: agent.role,
+          status: agent.status,
+          currentTask: agent.currentTask ?? null,
+          at: Date.now(),
+        });
+      }
     }
+  }
+
+  private isAgentActive(status: CrocAgent['status']): boolean {
+    return CrocOffice.ACTIVE_AGENT_STATUSES.has(status);
   }
 
   isRunning(): boolean {
@@ -282,9 +313,20 @@ export class CrocOffice {
   /** Reset all agents to idle */
   resetAgents(): void {
     for (const agent of this.agents) {
+      const wasActive = this.isAgentActive(agent.status);
       agent.status = 'idle';
       agent.currentTask = undefined;
       agent.progress = undefined;
+      if (wasActive) {
+        this.broadcast('agent:released', {
+          id: agent.id,
+          name: agent.name,
+          role: agent.role,
+          status: agent.status,
+          currentTask: null,
+          at: Date.now(),
+        });
+      }
     }
     this.broadcast('agent:update', this.agents);
   }
