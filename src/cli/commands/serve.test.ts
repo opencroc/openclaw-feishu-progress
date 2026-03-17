@@ -28,9 +28,13 @@ describe('serve command', () => {
   it('should use a single SPA entry with route-based views', () => {
     const html = readFileSync(resolve(process.cwd(), 'src/web/index.html'), 'utf-8');
     const routes = readFileSync(resolve(process.cwd(), 'src/web/src/app/routes.tsx'), 'utf-8');
+    const server = readFileSync(resolve(process.cwd(), 'src/server/index.ts'), 'utf-8');
 
     expect(html).toContain('src="/src/main.tsx"');
     expect(routes).toContain("path: '/studio'");
     expect(routes).toContain("path: '/pixel'");
+    expect(server).toContain("app.get('/', (_req, reply) => {");
+    expect(server).toContain("app.get('/studio', (_req, reply) => {");
+    expect(server).toContain("app.get('/pixel', (_req, reply) => {");
   });
 });

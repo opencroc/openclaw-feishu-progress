@@ -30,11 +30,28 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // --- Static frontend assets ---
   const webDir = resolve(__dirname, '../web');
+  const builtIndexPath = join(webDir, 'dist', 'index.html');
+
+  function hasBuiltStudio(): boolean {
+    return existsSync(builtIndexPath);
+  }
+
+  function sendSpaEntry(reply: { sendFile: (path: string) => unknown; code: (status: number) => any; header: (key: string, value: string) => any; send: (body: string) => unknown; }) {
+    if (hasBuiltStudio()) {
+      return reply.sendFile('dist/index.html');
+    }
+
+    return reply.code(200).header('content-type', 'text/html').send(getEmbeddedHtml());
+  }
+
+  function isAssetRequest(url: string): boolean {
+    return /\.[a-z0-9]+$/i.test(url) || url.startsWith('/dist/');
+  }
+
   if (existsSync(webDir)) {
     await app.register(fastifyStatic, {
       root: webDir,
       prefix: '/',
-      decorateReply: false,
       index: false,
     });
   }
@@ -64,19 +81,26 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     reply.redirect('/pixel');
   });
 
+  app.get('/', (_req, reply) => {
+    return sendSpaEntry(reply);
+  });
+
+  app.get('/studio', (_req, reply) => {
+    return sendSpaEntry(reply);
+  });
+
+  app.get('/pixel', (_req, reply) => {
+    return sendSpaEntry(reply);
+  });
+
   // --- SPA fallback: serve index.html for non-API, non-asset routes ---
   app.setNotFoundHandler((req, reply) => {
-    if (req.url.startsWith('/api/')) {
+    if (req.url.startsWith('/api/') || req.url.startsWith('/ws') || isAssetRequest(req.url)) {
       reply.code(404).send({ error: 'Not found' });
       return;
     }
-    // Single-entry SPA fallback: route resolution happens in the frontend router.
-    const builtIndexPath = join(webDir, 'dist', 'index.html');
-    if (existsSync(builtIndexPath)) {
-      reply.sendFile('dist/index.html');
-    } else {
-      reply.code(200).header('content-type', 'text/html').send(getEmbeddedHtml());
-    }
+
+    return sendSpaEntry(reply);
   });
 
   try {
