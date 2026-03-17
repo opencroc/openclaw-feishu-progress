@@ -1,5 +1,5 @@
 import { defineConfig } from 'tsup';
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export default defineConfig({
@@ -12,13 +12,15 @@ export default defineConfig({
   splitting: false,
   shims: true,
   onSuccess: async () => {
-    // Copy web assets to dist/web/
-    const src = resolve('src/web');
-    const dest = resolve('dist/web');
+    // Only publish the built frontend bundle, not the source workspace.
+    const src = resolve('src/web/dist');
+    const webDest = resolve('dist/web');
+    const dest = resolve(webDest, 'dist');
     if (existsSync(src)) {
+      rmSync(webDest, { recursive: true, force: true });
       mkdirSync(dest, { recursive: true });
       cpSync(src, dest, { recursive: true });
-      console.log('✅ Copied web assets to dist/web/');
+      console.log('Copied built web bundle to dist/web/dist/');
     }
   },
 });
