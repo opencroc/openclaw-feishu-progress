@@ -1,0 +1,19 @@
+html,
+body,
+#root,
+.app-layout {
+  width: 100%;
+  height: 100%;
+}
+
+body[data-route-variant='office'] {
+  background: #000;
+}
+
+body[data-route-variant='graph'] {
+  background: #08101d;
+}
+
+body[data-route-variant='pixel'] {
+  background: #0a1220;
+}

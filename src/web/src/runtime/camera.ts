@@ -122,4 +122,11 @@ export class CameraController {
   getControls() {
     return this.controls;
   }
+
+  dispose() {
+    this.controls?.dispose?.();
+    if (this.scene?.userData?.camera === this.camera) {
+      delete this.scene.userData.camera;
+    }
+  }
 }

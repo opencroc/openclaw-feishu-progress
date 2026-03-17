@@ -35,6 +35,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
       root: webDir,
       prefix: '/',
       decorateReply: false,
+      index: false,
     });
   }
 
@@ -55,19 +56,24 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     });
   });
 
+  app.get('/index-studio.html', (_req, reply) => {
+    reply.redirect('/studio');
+  });
+
+  app.get('/index-v2-pixel.html', (_req, reply) => {
+    reply.redirect('/pixel');
+  });
+
   // --- SPA fallback: serve index.html for non-API, non-asset routes ---
   app.setNotFoundHandler((req, reply) => {
     if (req.url.startsWith('/api/')) {
       reply.code(404).send({ error: 'Not found' });
       return;
     }
-    // Prefer 3D Office as primary entry; Studio accessible via /index-studio.html
-    const indexPath = join(webDir, 'index.html');
-    const studioPath = join(webDir, 'index-studio.html');
-    if (existsSync(indexPath)) {
-      reply.sendFile('index.html');
-    } else if (existsSync(studioPath)) {
-      reply.sendFile('index-studio.html');
+    // Single-entry SPA fallback: route resolution happens in the frontend router.
+    const builtIndexPath = join(webDir, 'dist', 'index.html');
+    if (existsSync(builtIndexPath)) {
+      reply.sendFile('dist/index.html');
     } else {
       reply.code(200).header('content-type', 'text/html').send(getEmbeddedHtml());
     }

@@ -5,13 +5,33 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 import * as THREE from 'three';
-import { getScene } from './engine.js';
+import { getScene } from './engine';
 
 let officeGroup = null;
 let currentTheme = 'dark';
 
 /* ─── Material Cache ───────────────────────────────────────────────────────── */
 const MAT = {};
+
+function disposeMaterialCache() {
+  Object.keys(MAT).forEach((key) => {
+    MAT[key]?.dispose?.();
+    delete MAT[key];
+  });
+}
+
+function disposeOfficeGroup(scene) {
+  if (!officeGroup) return;
+  scene?.remove(officeGroup);
+  officeGroup.traverse((child) => {
+    child.geometry?.dispose?.();
+  });
+  officeGroup = null;
+  DESK_POSITIONS.length = 0;
+  POND_POSITIONS.length = 0;
+  DESK_INDICATORS.clear();
+  disposeMaterialCache();
+}
 
 function initMaterials(theme) {
   const dk = theme === 'dark';
@@ -43,6 +63,7 @@ function initMaterials(theme) {
    ═══════════════════════════════════════════════════════════════════════════════ */
 export async function createOffice(theme) {
   currentTheme = theme;
+  disposeOfficeGroup(getScene());
   initMaterials(theme);
 
   const scene = getScene();
@@ -874,19 +895,18 @@ export function getFloorY() {
   return 0.2;
 }
 
+export function disposeOffice() {
+  disposeOfficeGroup(getScene());
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    Theme Update
    ═══════════════════════════════════════════════════════════════════════════════ */
 export function updateOfficeLighting(theme) {
-  if (!officeGroup) return;
   currentTheme = theme;
-
-  // Reload materials
-  initMaterials(theme);
-
-  // We rebuild the office to apply new materials
   const scene = getScene();
-  scene.remove(officeGroup);
+  disposeOfficeGroup(scene);
+  initMaterials(theme);
   officeGroup = new THREE.Group();
   officeGroup.name = 'office';
 

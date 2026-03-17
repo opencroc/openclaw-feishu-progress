@@ -5,6 +5,17 @@
 
 import * as THREE from 'three';
 
+function disposeObject3D(object) {
+  object?.traverse?.((child) => {
+    child.geometry?.dispose?.();
+    if (Array.isArray(child.material)) {
+      child.material.forEach((material) => material?.dispose?.());
+    } else {
+      child.material?.dispose?.();
+    }
+  });
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    ParticleManager
    ═══════════════════════════════════════════════════════════════════════════════ */
@@ -457,5 +468,15 @@ export class ParticleManager {
     } else {
       spawn();
     }
+  }
+
+  dispose() {
+    for (const system of this.systems) {
+      if (system.mesh) {
+        this.scene.remove(system.mesh);
+        disposeObject3D(system.mesh);
+      }
+    }
+    this.systems = [];
   }
 }

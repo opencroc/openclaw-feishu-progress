@@ -6,12 +6,24 @@
 
 import * as THREE from 'three';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { DESK_POSITIONS, POND_POSITIONS, setDeskOccupied } from './office.js';
+import { DESK_POSITIONS, POND_POSITIONS, setDeskOccupied } from './office';
 
 /* ─── Module state ─────────────────────────────────────────────────────────── */
 const agents = new Map(); // name → { group, parts, label, bubble, anim }
 let scene = null;
 let css2dRenderer = null;
+let css2dResizeHandler = null;
+
+function disposeObject3D(object) {
+  object?.traverse?.((child) => {
+    child.geometry?.dispose?.();
+    if (Array.isArray(child.material)) {
+      child.material.forEach((material) => material?.dispose?.());
+    } else {
+      child.material?.dispose?.();
+    }
+  });
+}
 
 /* ─── Robot Colors per Role ────────────────────────────────────────────────── */
 const ROLE_COLORS = {
@@ -63,6 +75,9 @@ export class AgentManager {
 
   /** Initialize CSS2D renderer for labels and bubbles */
   _initCSS2D() {
+    if (css2dRenderer?.domElement?.parentNode) {
+      css2dRenderer.domElement.parentNode.removeChild(css2dRenderer.domElement);
+    }
     css2dRenderer = new CSS2DRenderer();
     css2dRenderer.setSize(window.innerWidth, window.innerHeight);
     css2dRenderer.domElement.style.position = 'fixed';
@@ -72,9 +87,10 @@ export class AgentManager {
     css2dRenderer.domElement.style.zIndex = '5';
     document.body.appendChild(css2dRenderer.domElement);
 
-    window.addEventListener('resize', () => {
+    css2dResizeHandler = () => {
       css2dRenderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    };
+    window.addEventListener('resize', css2dResizeHandler);
   }
 
   /** Sync agents from backend data */
@@ -606,6 +622,7 @@ export class AgentManager {
     const agent = agents.get(name);
     if (!agent) return;
     scene.remove(agent.group);
+    disposeObject3D(agent.group);
     agents.delete(name);
     this._syncDeskOccupancy();
 
@@ -683,6 +700,31 @@ export class AgentManager {
         agent.bubbleObj = null;
       }
     }, 3000);
+  }
+
+  dispose() {
+    for (const timer of this._bubbleTimers.values()) {
+      clearTimeout(timer);
+    }
+    this._bubbleTimers.clear();
+    this._deskAssignments.clear();
+    this._eventAssignments.clear();
+
+    for (const name of [...agents.keys()]) {
+      this._removeRobot(name);
+    }
+
+    if (css2dResizeHandler) {
+      window.removeEventListener('resize', css2dResizeHandler);
+      css2dResizeHandler = null;
+    }
+
+    if (css2dRenderer?.domElement?.parentNode) {
+      css2dRenderer.domElement.parentNode.removeChild(css2dRenderer.domElement);
+    }
+
+    css2dRenderer = null;
+    scene = null;
   }
 }
 

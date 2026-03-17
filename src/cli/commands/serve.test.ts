@@ -25,21 +25,12 @@ describe('serve command', () => {
     warnSpy.mockRestore();
   });
 
-  it('should include Studio interaction controls in the page template', () => {
-    const html = readFileSync(resolve(process.cwd(), 'src/web/index-studio.html'), 'utf-8');
-    expect(html).toContain('id="report-toolbar"');
-    expect(html).toContain('onclick="focusOnSelectedNode()"');
-    expect(html).toContain('function retryCurrentReport()');
-    expect(html).toContain('event-log-filter');
-    expect(html).toContain('id="snapshot-section"');
-    expect(html).toContain('function restoreSnapshot(snapshotId)');
-    expect(html).toContain('function renameSnapshot(snapshotId)');
-    expect(html).toContain('function deleteSnapshot(snapshotId)');
-    expect(html).toContain('id="snapshot-search"');
-    expect(html).toContain('function togglePinSnapshot(snapshotId, pinned)');
-    expect(html).toContain('id="snapshot-tag-filters"');
-    expect(html).toContain('function editSnapshotTags(snapshotId)');
-    expect(html).toContain('let activeSnapshotTags = []');
-    expect(html).toContain('data-role="snapshot-filter"');
+  it('should use a single SPA entry with route-based views', () => {
+    const html = readFileSync(resolve(process.cwd(), 'src/web/index.html'), 'utf-8');
+    const routes = readFileSync(resolve(process.cwd(), 'src/web/src/app/routes.tsx'), 'utf-8');
+
+    expect(html).toContain('src="/src/main.tsx"');
+    expect(routes).toContain("path: '/studio'");
+    expect(routes).toContain("path: '/pixel'");
   });
 });

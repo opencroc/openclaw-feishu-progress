@@ -21,6 +21,16 @@ let clock = null;
 let bloomPass = null;
 let fxaaPass = null;
 
+function disposeMaterial(material) {
+  if (!material) return;
+  for (const value of Object.values(material)) {
+    if (value && typeof value === 'object' && value.isTexture) {
+      value.dispose();
+    }
+  }
+  material.dispose?.();
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    1. createEngine — Initialize the full Three.js rendering pipeline
    ═══════════════════════════════════════════════════════════════════════════════ */
@@ -482,6 +492,35 @@ export function updateEngineTheme(theme) {
 /* ═══════════════════════════════════════════════════════════════════════════════
    10. Getters
    ═══════════════════════════════════════════════════════════════════════════════ */
+export function disposeEngine() {
+  if (scene) {
+    scene.traverse((child) => {
+      child.geometry?.dispose?.();
+      if (Array.isArray(child.material)) {
+        child.material.forEach(disposeMaterial);
+      } else {
+        disposeMaterial(child.material);
+      }
+    });
+
+    while (scene.children.length > 0) {
+      scene.remove(scene.children[0]);
+    }
+  }
+
+  composer?.passes?.forEach?.((pass) => pass.dispose?.());
+  composer?.dispose?.();
+  renderer?.dispose?.();
+
+  renderer = null;
+  scene = null;
+  camera = null;
+  composer = null;
+  clock = null;
+  bloomPass = null;
+  fxaaPass = null;
+}
+
 export function getRenderer() { return renderer; }
 export function getScene() { return scene; }
 export function getCamera() { return camera; }

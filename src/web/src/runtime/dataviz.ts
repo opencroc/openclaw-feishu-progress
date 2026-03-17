@@ -6,6 +6,17 @@
 
 import * as THREE from 'three';
 
+function disposeObject3D(object) {
+  object?.traverse?.((child) => {
+    child.geometry?.dispose?.();
+    if (Array.isArray(child.material)) {
+      child.material.forEach((material) => material?.dispose?.());
+    } else {
+      child.material?.dispose?.();
+    }
+  });
+}
+
 /* ─── Color Map per module ─────────────────────────────────────────────────── */
 const MOD_COLORS = [
   0x34d399, 0x60a5fa, 0xa78bfa, 0xf472b6, 0xfbbf24,
@@ -128,6 +139,14 @@ export class GraphViz {
   /** Show/hide the graph */
   show() { this.group.visible = true; }
   hide() { this.group.visible = false; }
+
+  dispose() {
+    this.scene.remove(this.group);
+    disposeObject3D(this.group);
+    this._nodes.clear();
+    this._edges = [];
+    this._modules.clear();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -284,5 +303,10 @@ export class HologramDisplay {
       this.sphere.material.opacity = 0.1 + t * 0.2;
       this.innerSphere.material.opacity = 0.08 + t * 0.15;
     }
+  }
+
+  dispose() {
+    this.scene.remove(this.group);
+    disposeObject3D(this.group);
   }
 }
