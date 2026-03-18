@@ -51,6 +51,33 @@ describe('FeishuApiDelivery', () => {
     expect(String(init.body)).toContain('"reply_in_thread":false');
   });
 
+  it('sends interactive card messages when card payload exists', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ code: 0, msg: 'ok', data: { message_id: 'om_card_1', root_id: 'om_root_card' } }),
+    }));
+    global.fetch = fetchMock as typeof fetch;
+    const delivery = new FeishuApiDelivery({ enabled: true, mode: 'live', tenantAccessToken: 'tenant_token_xxx' });
+
+    const receipt = await delivery.send({
+      ...sampleMessage,
+      kind: 'task-ack',
+      card: {
+        schema: '2.0',
+        header: {
+          title: { tag: 'plain_text', content: '任务已开始：task_123' },
+          template: 'blue',
+        },
+        elements: [],
+      },
+    });
+
+    expect(receipt).toEqual({ messageId: 'om_card_1', rootId: 'om_root_card', threadId: undefined });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(String(init.body)).toContain('"msg_type":"interactive"');
+    expect(String(init.body)).toContain('任务已开始：task_123');
+  });
+
   it('fetches tenant token when app credentials are provided', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({

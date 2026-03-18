@@ -9,6 +9,7 @@ export interface FeishuBridgeConfig {
   tenantAccessToken?: string;
   apiBaseUrl?: string;
   mode?: 'mock' | 'live';
+  messageFormat?: 'text' | 'card';
 }
 
 export interface FeishuTaskTarget {
@@ -18,6 +19,19 @@ export interface FeishuTaskTarget {
   replyToMessageId?: string;
   rootMessageId?: string;
   source?: 'feishu';
+}
+
+export interface FeishuCardPayload {
+  schema: '2.0';
+  config?: {
+    wide_screen_mode?: boolean;
+    update_multi?: boolean;
+  };
+  header: {
+    title: { tag: 'plain_text'; content: string };
+    template?: 'blue' | 'wathet' | 'turquoise' | 'green' | 'yellow' | 'orange' | 'red' | 'grey' | 'indigo' | 'purple';
+  };
+  elements: Array<Record<string, unknown>>;
 }
 
 export interface FeishuOutboundMessage {
@@ -31,6 +45,7 @@ export interface FeishuOutboundMessage {
   detail?: string;
   link?: string;
   decision?: TaskDecisionPrompt;
+  card?: FeishuCardPayload;
 }
 
 export interface FeishuDeliveryReceipt {
@@ -156,6 +171,94 @@ function formatRequestAckText(request: FeishuTaskRequest, taskId: string): strin
   return parts.join('\n');
 }
 
+function progressBar(progress: number): string {
+  const filled = Math.max(0, Math.min(10, Math.round(progress / 10)));
+  return `${'■'.repeat(filled)}${'□'.repeat(10 - filled)} ${progress}%`;
+}
+
+function cardTemplateForStatus(status: TaskRecord['status']): FeishuCardPayload['header']['template'] {
+  switch (status) {
+    case 'done': return 'green';
+    case 'failed': return 'red';
+    case 'waiting': return 'orange';
+    case 'running': return 'blue';
+    default: return 'wathet';
+  }
+}
+
+function createTaskCard(message: FeishuOutboundMessage): FeishuCardPayload {
+  const elements: Array<Record<string, unknown>> = [
+    {
+      tag: 'div',
+      text: {
+        tag: 'lark_md',
+        content: `**任务 ID**：${message.taskId}\n**进度**：${progressBar(message.progress)}`,
+      },
+    },
+  ];
+
+  if (message.stage || message.detail) {
+    elements.push({
+      tag: 'div',
+      text: {
+        tag: 'lark_md',
+        content: [
+          message.stage ? `**当前阶段**：${message.stage}` : undefined,
+          message.detail ? `**状态**：${message.detail}` : undefined,
+        ].filter(Boolean).join('\n'),
+      },
+    });
+  }
+
+  if (message.decision?.options?.length) {
+    elements.push({
+      tag: 'div',
+      text: {
+        tag: 'lark_md',
+        content: `**待确认**：${message.decision.prompt}\n${message.decision.options.map((opt) => `${opt.id}. ${opt.label}${opt.description ? ` - ${opt.description}` : ''}`).join('\n')}`,
+      },
+    });
+  }
+
+  if (message.link) {
+    elements.push({
+      tag: 'action',
+      actions: [
+        {
+          tag: 'button',
+          text: { tag: 'plain_text', content: '查看任务详情' },
+          type: 'primary',
+          url: message.link,
+        },
+      ],
+    });
+  }
+
+  return {
+    schema: '2.0',
+    config: {
+      wide_screen_mode: true,
+      update_multi: true,
+    },
+    header: {
+      title: {
+        tag: 'plain_text',
+        content: message.kind === 'task-ack'
+          ? `任务已开始：${message.taskId}`
+          : message.kind === 'task-waiting'
+            ? `任务等待确认：${message.taskId}`
+            : message.kind === 'task-complete'
+              ? `任务已完成：${message.taskId}`
+              : message.kind === 'task-failed'
+                ? `任务执行失败：${message.taskId}`
+                : `任务进度更新：${message.taskId}`,
+      },
+      template: cardTemplateForStatus(message.status),
+    },
+    elements,
+  };
+}
+
 export class FeishuProgressBridge {
   private withReplyContext(taskId: string, message: FeishuOutboundMessage): FeishuOutboundMessage {
     const subscription = this.subscriptions.get(taskId);
@@ -174,8 +277,17 @@ export class FeishuProgressBridge {
     };
   }
 
+  private withMessageFormat(message: FeishuOutboundMessage): FeishuOutboundMessage {
+    if (this.config.messageFormat !== 'card') return message;
+    if (message.kind === 'task-progress') return message;
+    return {
+      ...message,
+      card: message.card ?? createTaskCard(message),
+    };
+  }
+
   private async sendAndTrack(taskId: string, message: FeishuOutboundMessage): Promise<void> {
-    const receipt = await this.delivery.send(this.withReplyContext(taskId, message));
+    const receipt = await this.delivery.send(this.withReplyContext(taskId, this.withMessageFormat(message)));
     const subscription = this.subscriptions.get(taskId);
     if (!subscription || !receipt) return;
     subscription.firstMessageId ??= receipt.messageId;
@@ -195,6 +307,12 @@ export class FeishuProgressBridge {
       enabled: config.enabled ?? true,
       baseTaskUrl: config.baseTaskUrl,
       progressThrottlePercent: config.progressThrottlePercent ?? 15,
+      appId: config.appId,
+      appSecret: config.appSecret,
+      tenantAccessToken: config.tenantAccessToken,
+      apiBaseUrl: config.apiBaseUrl,
+      mode: config.mode,
+      messageFormat: config.messageFormat,
     };
   }
 
@@ -228,20 +346,24 @@ export class FeishuProgressBridge {
 
   createRequestAck(taskId: string, request: FeishuTaskRequest): FeishuTaskRequestAck {
     const link = request.link ?? formatTaskLink(this.config.baseTaskUrl, taskId);
+    const message: FeishuOutboundMessage = {
+      kind: 'task-ack',
+      target: request.target,
+      taskId,
+      text: formatRequestAckText({ ...request, link }, taskId),
+      progress: request.initialProgress ?? 0,
+      status: 'queued',
+      stage: request.stage,
+      detail: request.detail,
+      link,
+    };
+    if (this.config.messageFormat === 'card') {
+      message.card = createTaskCard(message);
+    }
     return {
       ok: true,
       taskId,
-      message: {
-        kind: 'task-ack',
-        target: request.target,
-        taskId,
-        text: formatRequestAckText({ ...request, link }, taskId),
-        progress: request.initialProgress ?? 0,
-        status: 'queued',
-        stage: request.stage,
-        detail: request.detail,
-        link,
-      },
+      message,
     };
   }
 
@@ -250,7 +372,7 @@ export class FeishuProgressBridge {
       this.bindTask(taskId, request.target);
     }
     const ack = this.createRequestAck(taskId, request);
-    const receipt = await this.delivery.send(this.withReplyContext(taskId, ack.message));
+    const receipt = await this.delivery.send(this.withReplyContext(taskId, this.withMessageFormat(ack.message)));
     const subscription = this.subscriptions.get(taskId);
     if (subscription && receipt) {
       subscription.firstMessageId ??= receipt.messageId;

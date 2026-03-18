@@ -108,6 +108,43 @@ describe('FeishuProgressBridge', () => {
     expect(sent[1]?.target.rootMessageId).toBe('om_user_1');
   });
 
+  it('creates cards for ack/waiting/complete in card mode', async () => {
+    const sent: FeishuOutboundMessage[] = [];
+    const bridge = new FeishuProgressBridge({ send: async (message) => { sent.push(message); return { messageId: `om_${sent.length}` }; } }, { messageFormat: 'card', baseTaskUrl: 'https://demo.opencroc.ai' });
+    bridge.bindTask('task_123', { chatId: 'chat_123', source: 'feishu', requestId: 'om_user_1', replyToMessageId: 'om_user_1', rootMessageId: 'om_user_1' });
+
+    await bridge.handleTaskUpdate(makeTask({ progress: 10 }));
+    await bridge.handleTaskUpdate(makeTask({
+      status: 'waiting',
+      progress: 66,
+      waitingFor: 'direction choice',
+      decision: {
+        prompt: '请选择下一步',
+        options: [{ id: '1', label: '继续分析' }],
+      },
+      events: [
+        { type: 'created', message: 'Task created', time: Date.now() },
+        { type: 'waiting', message: 'Need user decision', time: Date.now() },
+      ],
+    }));
+    await bridge.handleTaskUpdate(makeTask({
+      status: 'done',
+      progress: 100,
+      summary: 'Done summary',
+      events: [
+        { type: 'created', message: 'Task created', time: Date.now() },
+        { type: 'done', message: 'Task done', time: Date.now() },
+      ],
+    }));
+
+    expect(sent[0]?.card).toBeDefined();
+    expect(sent[1]?.card).toBeDefined();
+    expect(sent[2]?.card).toBeDefined();
+    expect((sent[0]?.card as any).header.title.content).toContain('任务已开始');
+    expect((sent[1]?.card as any).header.title.content).toContain('任务等待确认');
+    expect((sent[2]?.card as any).header.title.content).toContain('任务已完成');
+  });
+
   it('sends completion update when task is done', async () => {
     const sent: FeishuOutboundMessage[] = [];
     const bridge = new FeishuProgressBridge({ send: async (message) => { sent.push(message); } });

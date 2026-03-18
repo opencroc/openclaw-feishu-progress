@@ -30,6 +30,21 @@ function formatOutboundText(message: FeishuOutboundMessage): string {
   return message.text;
 }
 
+function resolveMessagePayload(message: FeishuOutboundMessage): { msgType: 'text' | 'interactive'; content: string } {
+  if (message.card) {
+    return {
+      msgType: 'interactive',
+      content: JSON.stringify(message.card),
+    };
+  }
+  return {
+    msgType: 'text',
+    content: JSON.stringify({
+      text: formatOutboundText(message),
+    }),
+  };
+}
+
 export class FeishuApiDelivery implements FeishuBridgeDelivery {
   private readonly config: FeishuBridgeConfig;
   private tokenCache: TokenCache | null = null;
@@ -89,6 +104,7 @@ export class FeishuApiDelivery implements FeishuBridgeDelivery {
     }
 
     const token = await this.getTenantAccessToken();
+    const payload = resolveMessagePayload(message);
     const response = await fetch(`${resolveApiBaseUrl(this.config)}/im/v1/messages?receive_id_type=chat_id`, {
       method: 'POST',
       headers: {
@@ -97,10 +113,8 @@ export class FeishuApiDelivery implements FeishuBridgeDelivery {
       },
       body: JSON.stringify({
         receive_id: message.target.chatId,
-        msg_type: 'text',
-        content: JSON.stringify({
-          text: formatOutboundText(message),
-        }),
+        msg_type: payload.msgType,
+        content: payload.content,
         reply_in_thread: Boolean(message.target.threadId || message.target.rootMessageId),
         root_id: message.target.rootMessageId,
         reply_to_message_id: message.target.replyToMessageId,
