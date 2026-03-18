@@ -69,6 +69,7 @@ export function resolveConfig(config: OpenCrocConfig): ResolvedConfig {
     _resolved: true,
     backendRoot: path.resolve(config.backendRoot),
     outDir: config.outDir ?? './opencroc-output',
+    feishu: config.feishu ?? {},
     adapter: typeof resolvedAdapter === 'string' ? resolveAdapterByName(resolvedAdapter) : resolvedAdapter,
     llm: config.llm ?? { provider: 'openai' },
     playwright: config.playwright ?? {},

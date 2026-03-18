@@ -1,8 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from '../croc-office.js';
 import type { ExecutionRunMode } from '../../execution/types.js';
+import { FeishuProgressBridge } from '../feishu-bridge.js';
 
 export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): void {
+  const feishuBridge = new FeishuProgressBridge({
+    send: async () => {
+      // Skeleton delivery only. Real Feishu message editing/sending is wired outside OpenCroc server runtime.
+    },
+  });
+  office.setFeishuBridge(feishuBridge);
   // GET /api/agents — list all croc agents
   app.get('/api/agents', async () => {
     return office.getAgents();
@@ -92,6 +99,38 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
     return { ok: true, task };
   });
 
+  // POST /api/feishu/tasks/ack — skeleton endpoint for Feishu complex-request ACK + task binding
+  app.post<{ Body: { taskId: string; chatId: string; threadId?: string; requestId?: string; title?: string; stage?: string; detail?: string } }>('/api/feishu/tasks/ack', async (req, reply) => {
+    const task = office.getTask(req.body.taskId);
+    if (!task) {
+      reply.code(404).send({ error: 'Task not found' });
+      return;
+    }
+
+    office.bindTaskToFeishu(task.id, {
+      chatId: req.body.chatId,
+      threadId: req.body.threadId,
+      requestId: req.body.requestId,
+      source: 'feishu',
+    });
+
+    const ack = feishuBridge.createRequestAck(task.id, {
+      title: req.body.title || task.title,
+      target: {
+        chatId: req.body.chatId,
+        threadId: req.body.threadId,
+        requestId: req.body.requestId,
+        source: 'feishu',
+      },
+      kind: task.kind,
+      initialProgress: task.progress,
+      stage: req.body.stage,
+      detail: req.body.detail || 'Task accepted from Feishu bridge',
+    });
+
+    return ack;
+  });
+
   // GET /api/files — generated test files from last pipeline run
   app.get('/api/files', async () => {
     const files = office.getGeneratedFiles();
@@ -142,8 +181,18 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
       reply.code(400).send({ error: 'Invalid mode. Valid values: auto, reuse, managed' });
       return;
     }
+    const previewTask = office.createTask('execute', 'Execute generated tests and collect results', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'prepare', label: 'Prepare runtime and test files' },
+      { key: 'backend', label: 'Prepare backend and auth' },
+      { key: 'execute', label: 'Run Playwright tests' },
+      { key: 'analyze', label: 'Analyze failures and summarize' },
+    ]);
+    office.activateTask(previewTask.id);
+    office.markTaskRunning('receive', 'Task accepted from API', 2);
+    office.activateTask(null);
     office.runTests({ mode }).catch(() => { /* errors handled internally */ });
-    return { ok: true, message: 'Test execution started' };
+    return { ok: true, message: 'Test execution started', taskId: previewTask.id };
   });
 
   // GET /api/test-results — last test execution metrics
@@ -164,8 +213,17 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
       reply.code(409).send({ error: 'A task is already running' });
       return;
     }
+    const previewTask = office.createTask('report', 'Generate multi-format project reports', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'generate', label: 'Generate reports' },
+      { key: 'write', label: 'Write report files' },
+      { key: 'publish', label: 'Publish report metadata' },
+    ]);
+    office.activateTask(previewTask.id);
+    office.markTaskRunning('receive', 'Task accepted from API', 2);
+    office.activateTask(null);
     office.generateReport().catch(() => { /* errors handled internally */ });
-    return { ok: true, message: 'Report generation started' };
+    return { ok: true, message: 'Report generation started', taskId: previewTask.id };
   });
 
   // GET /api/reports — list last generated reports

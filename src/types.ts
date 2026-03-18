@@ -1,3 +1,5 @@
+import type { FeishuBridgeConfig } from './server/feishu-bridge.js';
+
 // ===== User-facing Config =====
 
 export interface OpenCrocConfig {
@@ -6,6 +8,9 @@ export interface OpenCrocConfig {
 
   /** Test output directory (default: ./opencroc-output) */
   outDir?: string;
+
+  /** Feishu / Lark task progress bridge configuration */
+  feishu?: FeishuBridgeConfig;
 
   /** Backend adapter: 'sequelize' | 'typeorm' | 'prisma' | custom BackendAdapter */
   adapter?: string | BackendAdapter;

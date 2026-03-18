@@ -4,6 +4,7 @@ import type { BackendStatus, ExecutionQualityGateResult, ExecutionRunMode, AuthS
 import type { ScanResult } from '../graph/types.js';
 import type { SummonPlan } from '../agents/task-router.js';
 import { TaskStore, type TaskRecord } from './task-store.js';
+import type { FeishuProgressBridge, FeishuTaskTarget } from './feishu-bridge.js';
 
 export interface CrocAgent {
   id: string;
@@ -80,6 +81,7 @@ export class CrocOffice {
   private running = false;
   private readonly taskStore = new TaskStore();
   private activeTaskId: string | null = null;
+  private feishuBridge: FeishuProgressBridge | null = null;
   private lastPipelineResult: PipelineRunResult | null = null;
   private lastGeneratedFiles: GeneratedTestFile[] = [];
   private lastExecutionMetrics: ExecutionMetrics | null = null;
@@ -121,13 +123,13 @@ export class CrocOffice {
     this.broadcast('log', { message, level, time: Date.now() });
     if (this.activeTaskId) {
       const task = this.taskStore.log(this.activeTaskId, message, level);
-      if (task) this.broadcast('task:update', task);
+      this.emitTaskUpdate(task);
     }
   }
 
   createTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>): TaskRecord {
     const task = this.taskStore.create({ kind, title, stageLabels });
-    this.broadcast('task:update', task);
+    this.emitTaskUpdate(task);
     return task;
   }
 
@@ -153,8 +155,18 @@ export class CrocOffice {
     this.activeTaskId = id;
   }
 
+  setFeishuBridge(bridge: FeishuProgressBridge | null): void {
+    this.feishuBridge = bridge;
+  }
+
+  bindTaskToFeishu(taskId: string, target: FeishuTaskTarget): void {
+    this.feishuBridge?.bindTask(taskId, target);
+  }
+
   private emitTaskUpdate(task: TaskRecord | undefined): void {
-    if (task) this.broadcast('task:update', task);
+    if (!task) return;
+    this.broadcast('task:update', task);
+    void this.feishuBridge?.handleTaskUpdate(task);
   }
 
   markTaskRunning(stageKey: string, detail: string, progress: number): void {
