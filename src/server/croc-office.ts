@@ -546,6 +546,14 @@ export class CrocOffice {
     }
     this.running = true;
     const start = Date.now();
+    const task = this.ensureActiveTask('execute', 'Execute generated tests and collect results', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'prepare', label: 'Prepare runtime and test files' },
+      { key: 'backend', label: 'Prepare backend and auth' },
+      { key: 'execute', label: 'Run Playwright tests' },
+      { key: 'analyze', label: 'Analyze failures and summarize' },
+    ]);
+    this.activateTask(task.id);
     let cleanupBackend: (() => Promise<void>) | null = null;
     let authStatus: AuthStatus = 'skipped';
     let backendStatus!: BackendStatus;
@@ -560,17 +568,20 @@ export class CrocOffice {
       const { buildExecutionQualityGate } = await import('../execution/quality-gate.js');
       const { categorizeFailure } = await import('../self-healing/index.js');
 
-      // Find test files on disk
+      this.markTaskRunning('receive', 'Task accepted and validating generated artifacts', 5);
+      this.completeTaskStage('receive', 'Execution task accepted', 10);
+      this.markTaskRunning('prepare', 'Preparing runtime assets and locating generated tests', 16);
+
       const testFiles = this.lastGeneratedFiles
         .map(f => resolvePath(this.cwd, f.filePath))
         .filter(f => existsSync(f));
 
       if (testFiles.length === 0) {
         this.log('⚠️ No test files found on disk', 'warn');
+        this.failTask('No test files found on disk');
         return { ok: false, task: 'execute', duration: Date.now() - start, error: 'No test files found on disk' };
       }
 
-      // Tester croc runs the tests
       const mode = options.mode ?? 'auto';
       this.updateAgent('tester-croc', { status: 'working', currentTask: `Running ${testFiles.length} test files (${mode})...`, progress: 0 });
       this.log(`🧪 测试鳄 is running ${testFiles.length} Playwright tests (${mode})...`);
@@ -583,6 +594,8 @@ export class CrocOffice {
       if (runtimeResult.writtenFiles.length > 0) {
         this.log(`🧩 Runtime assets prepared: ${runtimeResult.writtenFiles.join(', ')}`);
       }
+      this.completeTaskStage('prepare', `Prepared runtime and located ${testFiles.length} test files`, 28);
+      this.markTaskRunning('backend', 'Preparing backend and auth environment', 34);
 
       const backendManager = createBackendManager();
       try {
@@ -626,8 +639,9 @@ export class CrocOffice {
         });
         throw err;
       }
+      this.completeTaskStage('backend', `Backend status: ${backendStatus}, auth status: ${authStatus}`, 44);
+      this.markTaskRunning('execute', 'Running Playwright execution coordinator', 52);
 
-      // Healer croc monitors
       this.updateAgent('healer-croc', { status: 'thinking', currentTask: 'Monitoring test run...', progress: 0 });
 
       const coordinator = createExecutionCoordinator({ categorizeFailure });
@@ -646,8 +660,9 @@ export class CrocOffice {
         backendStatus,
       });
       const total = metrics.passed + metrics.failed + metrics.skipped + metrics.timedOut;
+      this.completeTaskStage('execute', `Completed execution of ${total} tests`, 78);
+      this.markTaskRunning('analyze', 'Summarizing results and failure insights', 84);
 
-      // Update croc states
       if (metrics.failed > 0) {
         this.updateAgent('tester-croc', { status: 'error', currentTask: `${metrics.failed} tests failed`, progress: 100 });
         this.updateAgent('healer-croc', { status: 'working', currentTask: `Analyzing ${metrics.failed} failures...`, progress: 50 });
@@ -663,18 +678,25 @@ export class CrocOffice {
       }
 
       this.updateNodeStatus('controller', metrics.failed > 0 ? 'failed' : 'passed');
-
-      // Broadcast results
       this.broadcast('test:complete', { metrics, total, quality: this.lastExecutionQuality });
 
       const duration = Date.now() - start;
-      this.log(`🧪 Test execution complete in ${duration}ms`);
-      return { ok: metrics.failed === 0, task: 'execute', duration, details: metrics as unknown as Record<string, unknown> };
+      const summary = `Test execution complete in ${duration}ms — ${metrics.passed} passed, ${metrics.failed} failed, ${metrics.skipped} skipped`;
+      this.log(`🧪 ${summary}`);
+      this.completeTaskStage('analyze', summary, 100);
+      if (metrics.failed > 0) {
+        this.failTask(summary);
+      } else {
+        this.finishTask(summary);
+      }
+      return { ok: metrics.failed === 0, task: 'execute', duration, details: { taskId: task.id, ...(metrics as unknown as Record<string, unknown>) } };
     } catch (err) {
-      this.updateAgent('tester-croc', { status: 'error', currentTask: String(err) });
-      this.log(`❌ Test execution failed: ${err}`, 'error');
+      const message = String(err);
+      this.updateAgent('tester-croc', { status: 'error', currentTask: message });
+      this.log(`❌ Test execution failed: ${message}`, 'error');
+      this.failTask(message);
       this.broadcast('test:complete', { metrics: null, total: 0, quality: this.lastExecutionQuality });
-      return { ok: false, task: 'execute', duration: Date.now() - start, error: String(err) };
+      return { ok: false, task: 'execute', duration: Date.now() - start, error: message };
     } finally {
       if (cleanupBackend) {
         try {
@@ -685,6 +707,7 @@ export class CrocOffice {
         }
       }
       this.running = false;
+      this.activateTask(null);
     }
   }
 
@@ -696,8 +719,19 @@ export class CrocOffice {
     }
     this.running = true;
     const start = Date.now();
+    const task = this.ensureActiveTask('report', 'Generate multi-format project reports', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'generate', label: 'Generate reports' },
+      { key: 'write', label: 'Write report files' },
+      { key: 'publish', label: 'Publish report metadata' },
+    ]);
+    this.activateTask(task.id);
 
     try {
+      this.markTaskRunning('receive', 'Task accepted and preparing report generation', 5);
+      this.completeTaskStage('receive', 'Report task accepted', 10);
+      this.markTaskRunning('generate', 'Generating HTML, JSON, and Markdown reports', 18);
+
       this.updateAgent('reporter-croc', { status: 'working', currentTask: 'Generating reports...', progress: 0 });
       this.log('📊 汇报鳄 is generating reports...');
 
@@ -708,8 +742,9 @@ export class CrocOffice {
         quality: this.lastExecutionQuality,
       });
       this.lastReports = reports;
+      this.completeTaskStage('generate', `Generated ${reports.length} in-memory reports`, 48);
+      this.markTaskRunning('write', 'Writing report files to output directory', 62);
 
-      // Write reports to disk
       const { resolve: resolvePath } = await import('node:path');
       const { writeFileSync, mkdirSync } = await import('node:fs');
       const outDir = resolvePath(this.cwd, this.config.outDir || './opencroc-output');
@@ -720,10 +755,11 @@ export class CrocOffice {
         writeFileSync(fullPath, report.content, 'utf-8');
         this.log(`📄 Generated ${report.format} report: ${report.filename}`);
       }
+      this.completeTaskStage('write', `Wrote ${reports.length} reports into ${outDir}`, 82);
+      this.markTaskRunning('publish', 'Publishing report metadata to clients', 90);
 
       this.updateAgent('reporter-croc', { status: 'done', currentTask: `${reports.length} reports generated`, progress: 100 });
 
-      // Broadcast reports to frontend
       this.broadcast('reports:generated', reports.map(r => ({
         format: r.format,
         filename: r.filename,
@@ -731,14 +767,20 @@ export class CrocOffice {
       })));
 
       const duration = Date.now() - start;
-      this.log(`✅ Reports generated in ${duration}ms`);
-      return { ok: true, task: 'report', duration, details: { count: reports.length } };
+      const summary = `Reports generated in ${duration}ms (${reports.length} files)`;
+      this.log(`✅ ${summary}`);
+      this.completeTaskStage('publish', summary, 100);
+      this.finishTask(summary);
+      return { ok: true, task: 'report', duration, details: { taskId: task.id, count: reports.length } };
     } catch (err) {
-      this.updateAgent('reporter-croc', { status: 'error', currentTask: String(err) });
-      this.log(`❌ Report generation failed: ${err}`, 'error');
-      return { ok: false, task: 'report', duration: Date.now() - start, error: String(err) };
+      const message = String(err);
+      this.updateAgent('reporter-croc', { status: 'error', currentTask: message });
+      this.log(`❌ Report generation failed: ${message}`, 'error');
+      this.failTask(message);
+      return { ok: false, task: 'report', duration: Date.now() - start, error: message };
     } finally {
       this.running = false;
+      this.activateTask(null);
     }
   }
 
