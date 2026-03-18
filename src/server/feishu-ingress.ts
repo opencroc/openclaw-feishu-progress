@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from './croc-office.js';
 import type { FeishuProgressBridge } from './feishu-bridge.js';
+import { dispatchChatTask } from './chat-task-dispatcher.js';
 
 interface FeishuChallengeBody {
   type?: string;
@@ -39,9 +40,14 @@ interface ComplexRequestStartResult {
   kind: 'task-start';
   taskId: string;
   ack: ReturnType<FeishuProgressBridge['createRequestAck']>;
+  dispatch: {
+    intent: 'pipeline' | 'scan' | 'report' | 'analysis';
+    action: 'started' | 'waiting';
+    reason: string;
+  };
   suggestedExecution: {
     type: 'chat-task';
-    nextStage: 'understand';
+    nextStage: 'understand' | 'gather';
     suggestedActions: string[];
   };
 }
@@ -132,18 +138,23 @@ export function registerFeishuIngressRoutes(app: FastifyInstance, office: CrocOf
       detail: '已收到复杂请求，正在进入任务执行态',
     });
 
+    const dispatch = await dispatchChatTask(office, task.id, text);
+
     const result: ComplexRequestStartResult = {
       kind: 'task-start',
       taskId: task.id,
       ack,
+      dispatch: {
+        intent: dispatch.plan.intent,
+        action: dispatch.action,
+        reason: dispatch.plan.reason,
+      },
       suggestedExecution: {
         type: 'chat-task',
-        nextStage: 'understand',
-        suggestedActions: [
-          'classify-request',
-          'collect-context',
-          'dispatch-to-analysis-or-pipeline',
-        ],
+        nextStage: dispatch.action === 'waiting' ? 'gather' : 'understand',
+        suggestedActions: dispatch.action === 'waiting'
+          ? ['await-decision', 'resume-chat-task']
+          : ['run-linked-task-flow', 'stream-progress-back-to-feishu'],
       },
     };
 

@@ -52,11 +52,13 @@ describe('registerFeishuIngressRoutes', () => {
     expect(payload.result.kind).toBe('task-start');
     expect(payload.result.taskId).toBeTruthy();
     expect(payload.result.ack.message.text).toContain('taskId');
+    expect(payload.result.dispatch.intent).toBe('analysis');
+    expect(payload.result.dispatch.action).toBe('waiting');
 
     const task = office.getTask(payload.result.taskId);
     expect(task?.kind).toBe('chat');
-    expect(task?.status).toBe('running');
-    expect(task?.currentStageKey).toBe('understand');
+    expect(task?.status).toBe('waiting');
+    expect(task?.currentStageKey).toBe('gather');
   });
 
   it('passes through simple short messages', async () => {
