@@ -6,6 +6,8 @@ const LEGACY_ROUTE_ALIASES: Record<string, string> = {
   '/index-v2-pixel.html': '/pixel',
 };
 
+const DYNAMIC_ROUTE_PREFIXES = ['/tasks'];
+
 export function normalizeAppPath(pathname: string): string {
   if (!pathname) {
     return '/';
@@ -16,6 +18,10 @@ export function normalizeAppPath(pathname: string): string {
   const trimmed = withLeadingSlash.length > 1 && withLeadingSlash.endsWith('/')
     ? withLeadingSlash.slice(0, -1)
     : withLeadingSlash;
+
+  if (DYNAMIC_ROUTE_PREFIXES.some((prefix) => trimmed === prefix || trimmed.startsWith(`${prefix}/`))) {
+    return trimmed;
+  }
 
   return LEGACY_ROUTE_ALIASES[trimmed] || trimmed;
 }

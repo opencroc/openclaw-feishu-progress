@@ -15,6 +15,7 @@ export type AppRoute = {
 const OfficePage = lazy(() => import('@pages/office'));
 const StudioPage = lazy(() => import('@pages/studio'));
 const PixelPage = lazy(() => import('@pages/pixel'));
+const TasksPage = lazy(() => import('@pages/tasks/page'));
 
 export const appRoutes: AppRoute[] = [
   {
@@ -44,9 +45,23 @@ export const appRoutes: AppRoute[] = [
     variant: 'pixel',
     component: PixelPage,
   },
+  {
+    id: 'tasks',
+    path: '/tasks',
+    title: 'OpenCroc Tasks',
+    navLabel: 'Tasks',
+    description: 'OpenCroc task progress view',
+    variant: 'graph',
+    component: TasksPage,
+  },
 ];
 
 export function resolveAppRoute(pathname: string): AppRoute {
   const normalizedPath = normalizeAppPath(pathname);
-  return appRoutes.find((route) => route.path === normalizedPath) || appRoutes[0];
+  const direct = appRoutes.find((route) => route.path === normalizedPath);
+  if (direct) return direct;
+  if (normalizedPath.startsWith('/tasks/')) {
+    return appRoutes.find((route) => route.id === 'tasks') || appRoutes[0];
+  }
+  return appRoutes[0];
 }

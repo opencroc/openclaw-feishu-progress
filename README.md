@@ -5,7 +5,7 @@
 <h1 align="center">OpenCroc</h1>
 
 <p align="center">
-  <strong>AI-native E2E testing framework that reads source code, generates tests, and self-heals failures.</strong>
+  <strong>AI-native project intelligence platform that turns codebases into living knowledge graphs, executable tasks, and agent workspaces.</strong>
 </p>
 
 <p align="center">
@@ -23,9 +23,9 @@
 
 ## What is OpenCroc?
 
-OpenCroc is an AI-native end-to-end testing framework built on top of [Playwright](https://playwright.dev). Instead of writing test scripts by hand, OpenCroc reads backend source code, understands models, controllers, DTOs, and relations, then generates complete E2E suites with seed data, request bodies, API chains, and assertions.
+OpenCroc is an AI-native project intelligence platform. It ingests codebases, turns them into living knowledge graphs, surfaces risks, coordinates specialized agents, and can drive execution loops such as scanning, planning, testing, healing, and reporting.
 
-When tests fail, OpenCroc does more than report the error. It traces the failure across the request chain, attributes likely root causes, proposes fixes, and can re-run verification after controlled healing steps.
+The current product still includes its source-aware E2E testing engine built on top of [Playwright](https://playwright.dev), but the direction is broader: repo understanding, task orchestration, visual workspaces, and agent-assisted execution. Instead of treating software projects as static folders, OpenCroc treats them as active systems that can be mapped, monitored, and improved.
 
 ## Key Capabilities
 

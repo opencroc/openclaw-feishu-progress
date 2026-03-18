@@ -24,9 +24,17 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
       reply.code(409).send({ error: 'A task is already running' });
       return;
     }
-    // Run async — don't await, respond immediately
+    const previewTask = office.createTask('scan', 'Scan project and build knowledge graph', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'scan', label: 'Scan project structure' },
+      { key: 'graph', label: 'Build knowledge graph' },
+      { key: 'report', label: 'Summarize result' },
+    ]);
+    office.activateTask(previewTask.id);
+    office.markTaskRunning('receive', 'Task accepted from API', 2);
+    office.activateTask(null);
     office.runScan().catch(() => { /* errors handled in runScan */ });
-    return { ok: true, message: 'Scan started' };
+    return { ok: true, message: 'Scan started', taskId: previewTask.id };
   });
 
   // POST /api/pipeline — trigger full pipeline (all crocs)
@@ -35,8 +43,19 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
       reply.code(409).send({ error: 'A task is already running' });
       return;
     }
+    const previewTask = office.createTask('pipeline', 'Run source-aware pipeline and generate outputs', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'scan', label: 'Scan codebase and ER structures' },
+      { key: 'analyze', label: 'Analyze API chains' },
+      { key: 'plan', label: 'Plan test chains' },
+      { key: 'codegen', label: 'Generate test code' },
+      { key: 'report', label: 'Validate and summarize' },
+    ]);
+    office.activateTask(previewTask.id);
+    office.markTaskRunning('receive', 'Task accepted from API', 2);
+    office.activateTask(null);
     office.runPipeline().catch(() => { /* errors handled in runPipeline */ });
-    return { ok: true, message: 'Pipeline started' };
+    return { ok: true, message: 'Pipeline started', taskId: previewTask.id };
   });
 
   // POST /api/reset — reset all agents to idle
@@ -50,7 +69,27 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
     return {
       running: office.isRunning(),
       agents: office.getAgents(),
+      activeTask: office.listTasks(1)[0] ?? null,
     };
+  });
+
+  // GET /api/tasks — recent tasks
+  app.get<{ Querystring: { limit?: string } }>('/api/tasks', async (req) => {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
+    return {
+      ok: true,
+      tasks: office.listTasks(Number.isFinite(limit) ? limit : 20),
+    };
+  });
+
+  // GET /api/tasks/:id — single task detail
+  app.get<{ Params: { id: string } }>('/api/tasks/:id', async (req, reply) => {
+    const task = office.getTask(req.params.id);
+    if (!task) {
+      reply.code(404).send({ error: 'Task not found' });
+      return;
+    }
+    return { ok: true, task };
   });
 
   // GET /api/files — generated test files from last pipeline run

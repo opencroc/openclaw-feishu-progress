@@ -3,6 +3,7 @@ import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile, ExecutionMet
 import type { BackendStatus, ExecutionQualityGateResult, ExecutionRunMode, AuthStatus } from '../execution/types.js';
 import type { ScanResult } from '../graph/types.js';
 import type { SummonPlan } from '../agents/task-router.js';
+import { TaskStore, type TaskRecord } from './task-store.js';
 
 export interface CrocAgent {
   id: string;
@@ -77,6 +78,8 @@ export class CrocOffice {
   private agents: CrocAgent[];
   private cachedGraph: KnowledgeGraph | null = null;
   private running = false;
+  private readonly taskStore = new TaskStore();
+  private activeTaskId: string | null = null;
   private lastPipelineResult: PipelineRunResult | null = null;
   private lastGeneratedFiles: GeneratedTestFile[] = [];
   private lastExecutionMetrics: ExecutionMetrics | null = null;
@@ -116,6 +119,72 @@ export class CrocOffice {
   /** Send a log message to all clients */
   log(message: string, level: 'info' | 'warn' | 'error' = 'info'): void {
     this.broadcast('log', { message, level, time: Date.now() });
+    if (this.activeTaskId) {
+      const task = this.taskStore.log(this.activeTaskId, message, level);
+      if (task) this.broadcast('task:update', task);
+    }
+  }
+
+  createTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>): TaskRecord {
+    const task = this.taskStore.create({ kind, title, stageLabels });
+    this.broadcast('task:update', task);
+    return task;
+  }
+
+  ensureActiveTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>): TaskRecord {
+    if (this.activeTaskId) {
+      const existing = this.taskStore.get(this.activeTaskId);
+      if (existing) return existing;
+    }
+    const task = this.createTask(kind, title, stageLabels);
+    this.activateTask(task.id);
+    return task;
+  }
+
+  getTask(id: string): TaskRecord | undefined {
+    return this.taskStore.get(id);
+  }
+
+  listTasks(limit = 20): TaskRecord[] {
+    return this.taskStore.list(limit);
+  }
+
+  activateTask(id: string | null): void {
+    this.activeTaskId = id;
+  }
+
+  private emitTaskUpdate(task: TaskRecord | undefined): void {
+    if (task) this.broadcast('task:update', task);
+  }
+
+  markTaskRunning(stageKey: string, detail: string, progress: number): void {
+    if (!this.activeTaskId) return;
+    const task = this.taskStore.markRunning(this.activeTaskId, stageKey, detail, progress);
+    this.emitTaskUpdate(task);
+  }
+
+  completeTaskStage(stageKey: string, detail: string, progress: number): void {
+    if (!this.activeTaskId) return;
+    const task = this.taskStore.updateStage(this.activeTaskId, stageKey, { status: 'done', detail }, progress);
+    this.emitTaskUpdate(task);
+  }
+
+  waitOnTask(waitingFor: string, detail: string, progress: number): void {
+    if (!this.activeTaskId) return;
+    const task = this.taskStore.markWaiting(this.activeTaskId, waitingFor, detail, progress);
+    this.emitTaskUpdate(task);
+  }
+
+  finishTask(summary: string): void {
+    if (!this.activeTaskId) return;
+    const task = this.taskStore.markDone(this.activeTaskId, summary);
+    this.emitTaskUpdate(task);
+  }
+
+  failTask(message: string): void {
+    if (!this.activeTaskId) return;
+    const task = this.taskStore.markFailed(this.activeTaskId, message);
+    this.emitTaskUpdate(task);
   }
 
   getAgents(): CrocAgent[] {
@@ -179,23 +248,44 @@ export class CrocOffice {
     if (this.running) return { ok: false, task: 'scan', duration: 0, error: 'Another task is running' };
     this.running = true;
     const start = Date.now();
+    const task = this.ensureActiveTask('scan', 'Scan project and build knowledge graph', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'scan', label: 'Scan project structure' },
+      { key: 'graph', label: 'Build knowledge graph' },
+      { key: 'report', label: 'Summarize result' },
+    ]);
+    this.activateTask(task.id);
 
     try {
+      this.markTaskRunning('receive', 'Task accepted and queued for scan', 5);
+      this.completeTaskStage('receive', 'Scan task accepted', 10);
+      this.markTaskRunning('scan', 'Scanning project files and module relationships', 20);
       this.invalidateCache();
-      this.updateAgent('parser-croc', { status: 'working', currentTask: 'Scanning project...', progress: 0 });
+      this.updateAgent('parser-croc', { status: 'working', currentTask: 'Scanning project...', progress: 10 });
       this.log('🔍 Parser croc is scanning the project...');
 
       const graph = await this.buildKnowledgeGraph();
+      this.completeTaskStage('scan', `Discovered ${graph.nodes.length} nodes and ${graph.edges.length} edges`, 65);
+      this.markTaskRunning('graph', 'Building graph view and refreshing cache', 75);
+      this.broadcast('graph:update', graph);
+      this.completeTaskStage('graph', 'Knowledge graph refreshed', 90);
+      this.markTaskRunning('report', 'Summarizing scan results', 95);
 
       const duration = Date.now() - start;
-      this.log(`✅ Scan complete: ${graph.nodes.length} nodes, ${graph.edges.length} edges (${duration}ms)`);
-      return { ok: true, task: 'scan', duration, details: { nodes: graph.nodes.length, edges: graph.edges.length } };
+      const summary = `Scan complete: ${graph.nodes.length} nodes, ${graph.edges.length} edges (${duration}ms)`;
+      this.log(`✅ ${summary}`);
+      this.completeTaskStage('report', summary, 100);
+      this.finishTask(summary);
+      return { ok: true, task: 'scan', duration, details: { taskId: task.id, nodes: graph.nodes.length, edges: graph.edges.length } };
     } catch (err) {
-      this.updateAgent('parser-croc', { status: 'error', currentTask: String(err) });
-      this.log(`❌ Scan failed: ${err}`, 'error');
-      return { ok: false, task: 'scan', duration: Date.now() - start, error: String(err) };
+      const message = String(err);
+      this.updateAgent('parser-croc', { status: 'error', currentTask: message });
+      this.log(`❌ Scan failed: ${message}`, 'error');
+      this.failTask(message);
+      return { ok: false, task: 'scan', duration: Date.now() - start, error: message };
     } finally {
       this.running = false;
+      this.activateTask(null);
     }
   }
 
@@ -204,31 +294,44 @@ export class CrocOffice {
     if (this.running) return { ok: false, task: 'pipeline', duration: 0, error: 'Another task is running' };
     this.running = true;
     const start = Date.now();
+    const task = this.ensureActiveTask('pipeline', 'Run source-aware pipeline and generate outputs', [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'scan', label: 'Scan codebase and ER structures' },
+      { key: 'analyze', label: 'Analyze API chains' },
+      { key: 'plan', label: 'Plan test chains' },
+      { key: 'codegen', label: 'Generate test code' },
+      { key: 'report', label: 'Validate and summarize' },
+    ]);
+    this.activateTask(task.id);
 
     try {
       const { resolve: resolvePath } = await import('node:path');
       const { createPipeline } = await import('../pipeline/index.js');
 
+      this.markTaskRunning('receive', 'Task accepted and preparing pipeline runtime', 3);
       const backendRoot = resolvePath(this.cwd, this.config.backendRoot);
       const pipelineConfig = { ...this.config, backendRoot };
       const pipeline = createPipeline(pipelineConfig);
+      this.completeTaskStage('receive', 'Pipeline runtime is ready', 8);
 
       // Phase 1: Scan + ER Diagram (解析鳄)
+      this.markTaskRunning('scan', 'Scanning source code and extracting ER structures', 12);
       this.updateAgent('parser-croc', { status: 'working', currentTask: 'Scanning source code...', progress: 10 });
       this.log(`🐊 解析鳄 scanning from: ${backendRoot}`);
       this.invalidateCache();
       await this.buildKnowledgeGraph();
       this.updateNodeStatus('module', 'testing');
 
-      // Run real pipeline: scan + er-diagram
       this.updateAgent('parser-croc', { currentTask: 'Parsing models & ER diagrams...', progress: 40 });
       const scanResult = await pipeline.run(['scan', 'er-diagram']);
       const moduleCount = scanResult.modules.length;
       const erCount = scanResult.erDiagrams.size;
       this.log(`📊 Found ${moduleCount} modules, ${erCount} ER diagrams`);
       this.updateAgent('parser-croc', { status: 'done', currentTask: `${moduleCount} modules parsed`, progress: 100 });
+      this.completeTaskStage('scan', `Parsed ${moduleCount} modules and ${erCount} ER diagrams`, 28);
 
       // Phase 2: API Chain Analysis (分析鳄)
+      this.markTaskRunning('analyze', 'Analyzing API chains and validation warnings', 34);
       this.updateAgent('analyzer-croc', { status: 'working', currentTask: 'Analyzing API chains...', progress: 0 });
       this.log('🐊 分析鳄 is analyzing API dependencies...');
       const analyzeResult = await pipeline.run(['api-chain']);
@@ -237,8 +340,10 @@ export class CrocOffice {
         this.log(`⚠️ ${warnings.length} API chain warnings`, 'warn');
       }
       this.updateAgent('analyzer-croc', { status: 'done', currentTask: 'Analysis complete', progress: 100 });
+      this.completeTaskStage('analyze', `API chain analysis complete${warnings.length ? ` with ${warnings.length} warnings` : ''}`, 46);
 
       // Phase 3: Plan test chains (规划鳄)
+      this.markTaskRunning('plan', 'Planning test chains and execution steps', 52);
       this.updateAgent('planner-croc', { status: 'thinking', currentTask: 'Planning test chains...', progress: 0 });
       this.log('🐊 规划鳄 is planning test chains...');
       const planResult = await pipeline.run(['plan']);
@@ -249,18 +354,18 @@ export class CrocOffice {
       }
       this.log(`📋 Planned ${totalChains} test chains with ${totalSteps} steps`);
       this.updateAgent('planner-croc', { status: 'done', currentTask: `${totalChains} chains planned`, progress: 100 });
+      this.completeTaskStage('plan', `Planned ${totalChains} chains with ${totalSteps} total steps`, 62);
 
       // Phase 4: Generate test code (测试鳄)
+      this.markTaskRunning('codegen', 'Generating Playwright tests and writing outputs', 68);
       this.updateAgent('tester-croc', { status: 'working', currentTask: 'Generating test code...', progress: 0 });
       this.log('🐊 测试鳄 is generating Playwright test code...');
       this.updateNodeStatus('controller', 'testing');
 
-      // Full pipeline run for codegen (it needs prior steps' results internally)
       const fullResult = await pipeline.run(['scan', 'er-diagram', 'api-chain', 'plan', 'codegen']);
       this.lastPipelineResult = fullResult;
       this.lastGeneratedFiles = fullResult.generatedFiles;
 
-      // Write generated files to disk
       const { writeFileSync, mkdirSync } = await import('node:fs');
       const { dirname } = await import('node:path');
       let filesWritten = 0;
@@ -274,8 +379,8 @@ export class CrocOffice {
       this.updateNodeStatus('controller', 'passed');
       this.log(`✅ Generated ${filesWritten} test files`);
       this.updateAgent('tester-croc', { status: 'done', currentTask: `${filesWritten} files generated`, progress: 100 });
+      this.completeTaskStage('codegen', `Generated ${filesWritten} files`, 84);
 
-      // Broadcast generated files to frontend
       this.broadcast('files:generated', fullResult.generatedFiles.map(f => ({
         filePath: f.filePath,
         module: f.module,
@@ -284,10 +389,10 @@ export class CrocOffice {
       })));
 
       // Phase 5: Report (汇报鳄)
+      this.markTaskRunning('report', 'Validating pipeline output and compiling report', 90);
       this.updateAgent('reporter-croc', { status: 'working', currentTask: 'Compiling report...', progress: 0 });
       this.log('🐊 汇报鳄 is compiling results...');
 
-      // Validation
       const validateResult = await pipeline.run(['validate']);
       const errors = validateResult.validationErrors.filter(e => e.severity === 'error');
       if (errors.length > 0) {
@@ -298,21 +403,27 @@ export class CrocOffice {
       this.updateAgent('reporter-croc', { status: 'done', currentTask: 'Report ready', progress: 100 });
 
       const duration = Date.now() - start;
-      this.log(`✅ Pipeline complete in ${duration}ms — ${moduleCount} modules, ${totalChains} chains, ${filesWritten} files`);
+      const summary = `Pipeline complete in ${duration}ms — ${moduleCount} modules, ${totalChains} chains, ${filesWritten} files`;
+      this.log(`✅ ${summary}`);
+      this.completeTaskStage('report', summary, 100);
+      this.finishTask(summary);
       this.broadcast('pipeline:complete', {
         duration, status: 'success',
         summary: { modules: moduleCount, chains: totalChains, steps: totalSteps, files: filesWritten },
       });
       return { ok: true, task: 'pipeline', duration, details: {
-        modules: moduleCount, chains: totalChains, steps: totalSteps, files: filesWritten,
+        taskId: task.id, modules: moduleCount, chains: totalChains, steps: totalSteps, files: filesWritten,
       }};
     } catch (err) {
-      this.updateAgent('tester-croc', { status: 'error', currentTask: String(err) });
-      this.log(`❌ Pipeline failed: ${err}`, 'error');
-      this.broadcast('pipeline:complete', { status: 'error', error: String(err) });
-      return { ok: false, task: 'pipeline', duration: Date.now() - start, error: String(err) };
+      const message = String(err);
+      this.updateAgent('tester-croc', { status: 'error', currentTask: message });
+      this.log(`❌ Pipeline failed: ${message}`, 'error');
+      this.failTask(message);
+      this.broadcast('pipeline:complete', { status: 'error', error: message });
+      return { ok: false, task: 'pipeline', duration: Date.now() - start, error: message };
     } finally {
       this.running = false;
+      this.activateTask(null);
     }
   }
 

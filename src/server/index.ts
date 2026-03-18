@@ -93,6 +93,14 @@ export async function startServer(opts: ServeOptions): Promise<void> {
     return sendSpaEntry(reply);
   });
 
+  app.get('/tasks', (_req, reply) => {
+    return sendSpaEntry(reply);
+  });
+
+  app.get('/tasks/:id', (_req, reply) => {
+    return sendSpaEntry(reply);
+  });
+
   // --- SPA fallback: serve index.html for non-API, non-asset routes ---
   app.setNotFoundHandler((req, reply) => {
     if (req.url.startsWith('/api/') || req.url.startsWith('/ws') || isAssetRequest(req.url)) {
