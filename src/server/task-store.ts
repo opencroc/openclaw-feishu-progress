@@ -19,6 +19,18 @@ export interface TaskEvent {
   time: number;
 }
 
+export interface TaskDecisionOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export interface TaskDecisionPrompt {
+  prompt: string;
+  options: TaskDecisionOption[];
+  allowFreeText?: boolean;
+}
+
 export interface TaskRecord {
   id: string;
   kind: string;
@@ -29,6 +41,7 @@ export interface TaskRecord {
   stages: TaskStage[];
   summary?: string;
   waitingFor?: string;
+  decision?: TaskDecisionPrompt;
   createdAt: number;
   updatedAt: number;
   completedAt?: number;
@@ -157,10 +170,11 @@ export class TaskStore {
     });
   }
 
-  markWaiting(id: string, waitingFor: string, detail?: string, progress?: number): TaskRecord | undefined {
+  markWaiting(id: string, waitingFor: string, detail?: string, progress?: number, decision?: TaskDecisionPrompt): TaskRecord | undefined {
     return this.update(id, (task) => {
       task.status = 'waiting';
       task.waitingFor = waitingFor;
+      task.decision = decision;
       if (typeof progress === 'number') task.progress = clampProgress(progress);
       task.events.push({
         type: 'waiting',
@@ -177,6 +191,8 @@ export class TaskStore {
       task.status = 'done';
       task.progress = 100;
       task.summary = summary;
+      task.waitingFor = undefined;
+      task.decision = undefined;
       task.completedAt = now();
       const current = task.stages.find((stage) => stage.key === task.currentStageKey);
       if (current && current.status !== 'done') {
@@ -190,6 +206,8 @@ export class TaskStore {
   markFailed(id: string, message: string): TaskRecord | undefined {
     return this.update(id, (task) => {
       task.status = 'failed';
+      task.waitingFor = undefined;
+      task.decision = undefined;
       task.completedAt = now();
       const current = task.stages.find((stage) => stage.key === task.currentStageKey);
       if (current) {

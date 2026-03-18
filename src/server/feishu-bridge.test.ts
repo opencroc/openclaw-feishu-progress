@@ -73,6 +73,35 @@ describe('FeishuProgressBridge', () => {
     expect(sent).toHaveLength(1);
   });
 
+  it('sends waiting update with decision options', async () => {
+    const sent: FeishuOutboundMessage[] = [];
+    const bridge = new FeishuProgressBridge({ send: async (message) => { sent.push(message); } });
+    bridge.bindTask('task_123', { chatId: 'chat_123', source: 'feishu' });
+
+    await bridge.handleTaskUpdate(makeTask({ progress: 10 }));
+    await bridge.handleTaskUpdate(makeTask({
+      status: 'waiting',
+      progress: 68,
+      waitingFor: 'product direction decision',
+      decision: {
+        prompt: '请选择接下来的方向',
+        options: [
+          { id: '1', label: '继续按 A 展开' },
+          { id: '2', label: '继续按 B 展开' },
+        ],
+      },
+      events: [
+        { type: 'created', message: 'Task created', time: Date.now() },
+        { type: 'waiting', message: 'Need product direction decision', time: Date.now() },
+      ],
+    }));
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]?.kind).toBe('task-waiting');
+    expect(sent[1]?.decision?.options).toHaveLength(2);
+    expect(sent[1]?.text).toContain('请选择接下来的方向');
+  });
+
   it('sends completion update when task is done', async () => {
     const sent: FeishuOutboundMessage[] = [];
     const bridge = new FeishuProgressBridge({ send: async (message) => { sent.push(message); } });

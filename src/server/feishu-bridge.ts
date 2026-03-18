@@ -1,4 +1,4 @@
-import type { TaskEvent, TaskRecord } from './task-store.js';
+import type { TaskDecisionPrompt, TaskEvent, TaskRecord } from './task-store.js';
 
 export interface FeishuBridgeConfig {
   enabled?: boolean;
@@ -23,6 +23,7 @@ export interface FeishuOutboundMessage {
   stage?: string;
   detail?: string;
   link?: string;
+  decision?: TaskDecisionPrompt;
 }
 
 export interface FeishuBridgeDelivery {
@@ -86,11 +87,22 @@ function formatProgressText(task: TaskRecord, link?: string): string {
   return parts.join('\n');
 }
 
+function formatDecision(decision: TaskDecisionPrompt | undefined): string | undefined {
+  if (!decision || decision.options.length === 0) return undefined;
+  const lines = [decision.prompt];
+  for (const option of decision.options) {
+    lines.push(`${option.id}. ${option.label}${option.description ? ` - ${option.description}` : ''}`);
+  }
+  return lines.join('\n');
+}
+
 function formatWaitingText(task: TaskRecord, link?: string): string {
   const latest = task.events[task.events.length - 1];
+  const decisionText = formatDecision(task.decision);
   const parts = [
     `任务等待确认：${task.title}`,
     `当前状态：${latest?.message || task.waitingFor || '等待用户输入'}`,
+    decisionText,
     link ? `详情：${link}` : undefined,
   ].filter(Boolean);
   return parts.join('\n');
@@ -215,6 +227,7 @@ export class FeishuProgressBridge {
         stage,
         detail: latest?.message,
         link,
+        decision: task.decision,
       });
       return;
     }

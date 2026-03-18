@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from '../croc-office.js';
 import type { ExecutionRunMode } from '../../execution/types.js';
+import type { TaskDecisionPrompt } from '../task-store.js';
 import { FeishuProgressBridge } from '../feishu-bridge.js';
 
 export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): void {
@@ -99,6 +100,37 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
     return { ok: true, task };
   });
 
+  // POST /api/feishu/tasks/start — create a chat task for a complex Feishu request and return immediate ACK payload
+  app.post<{ Body: { title: string; chatId: string; threadId?: string; requestId?: string; detail?: string } }>('/api/feishu/tasks/start', async (req) => {
+    const task = office.createChatTask(req.body.title);
+    office.bindTaskToFeishu(task.id, {
+      chatId: req.body.chatId,
+      threadId: req.body.threadId,
+      requestId: req.body.requestId,
+      source: 'feishu',
+    });
+
+    office.activateTask(task.id);
+    office.markTaskRunning('receive', req.body.detail || 'Task accepted from Feishu', 8);
+    office.activateTask(null);
+
+    const ack = feishuBridge.createRequestAck(task.id, {
+      title: task.title,
+      target: {
+        chatId: req.body.chatId,
+        threadId: req.body.threadId,
+        requestId: req.body.requestId,
+        source: 'feishu',
+      },
+      kind: task.kind,
+      initialProgress: 8,
+      stage: '接收任务',
+      detail: req.body.detail || '已收到，正在处理复杂请求',
+    });
+
+    return ack;
+  });
+
   // POST /api/feishu/tasks/ack — skeleton endpoint for Feishu complex-request ACK + task binding
   app.post<{ Body: { taskId: string; chatId: string; threadId?: string; requestId?: string; title?: string; stage?: string; detail?: string } }>('/api/feishu/tasks/ack', async (req, reply) => {
     const task = office.getTask(req.body.taskId);
@@ -129,6 +161,21 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
     });
 
     return ack;
+  });
+
+  // POST /api/feishu/tasks/:id/waiting — set task into waiting/decision state for Feishu follow-up
+  app.post<{ Params: { id: string }; Body: { waitingFor: string; detail: string; progress?: number; decision?: TaskDecisionPrompt } }>('/api/feishu/tasks/:id/waiting', async (req, reply) => {
+    const task = office.getTask(req.params.id);
+    if (!task) {
+      reply.code(404).send({ error: 'Task not found' });
+      return;
+    }
+
+    office.activateTask(task.id);
+    office.waitOnTask(req.body.waitingFor, req.body.detail, req.body.progress ?? task.progress, req.body.decision);
+    office.activateTask(null);
+
+    return { ok: true, task: office.getTask(task.id) };
   });
 
   // GET /api/files — generated test files from last pipeline run

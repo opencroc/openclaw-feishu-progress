@@ -3,7 +3,7 @@ import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile, ExecutionMet
 import type { BackendStatus, ExecutionQualityGateResult, ExecutionRunMode, AuthStatus } from '../execution/types.js';
 import type { ScanResult } from '../graph/types.js';
 import type { SummonPlan } from '../agents/task-router.js';
-import { TaskStore, type TaskRecord } from './task-store.js';
+import { TaskStore, type TaskDecisionPrompt, type TaskRecord } from './task-store.js';
 import type { FeishuProgressBridge, FeishuTaskTarget } from './feishu-bridge.js';
 
 export interface CrocAgent {
@@ -133,6 +133,16 @@ export class CrocOffice {
     return task;
   }
 
+  createChatTask(title: string): TaskRecord {
+    return this.createTask('chat', title, [
+      { key: 'receive', label: 'Receive task' },
+      { key: 'understand', label: 'Understand problem' },
+      { key: 'gather', label: 'Gather materials / scan context' },
+      { key: 'generate', label: 'Generate answer' },
+      { key: 'finalize', label: 'Finalize output' },
+    ]);
+  }
+
   ensureActiveTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>): TaskRecord {
     if (this.activeTaskId) {
       const existing = this.taskStore.get(this.activeTaskId);
@@ -181,9 +191,9 @@ export class CrocOffice {
     this.emitTaskUpdate(task);
   }
 
-  waitOnTask(waitingFor: string, detail: string, progress: number): void {
+  waitOnTask(waitingFor: string, detail: string, progress: number, decision?: TaskDecisionPrompt): void {
     if (!this.activeTaskId) return;
-    const task = this.taskStore.markWaiting(this.activeTaskId, waitingFor, detail, progress);
+    const task = this.taskStore.markWaiting(this.activeTaskId, waitingFor, detail, progress, decision);
     this.emitTaskUpdate(task);
   }
 
