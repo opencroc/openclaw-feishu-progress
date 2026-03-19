@@ -130,7 +130,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   try {
     await app.listen({ port: opts.port, host: opts.host });
     const url = `http://${opts.host === '0.0.0.0' ? 'localhost' : opts.host}:${opts.port}`;
-    console.log(`\n  🐊 OpenCroc Studio is running at ${url}\n`);
+    console.log(`\n  🐊 OpenClaw Feishu Progress is running at ${url}\n`);
 
     if (opts.open) {
       const { exec } = await import('node:child_process');
@@ -151,7 +151,7 @@ function getEmbeddedHtml(): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenCroc Studio 🐊</title>
+<title>OpenClaw Feishu Progress 🐊</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#1a1a2e; color:#e0e0e0; font-family:'Courier New',monospace; display:flex; justify-content:center; align-items:center; min-height:100vh; }
@@ -168,8 +168,8 @@ function getEmbeddedHtml(): string {
 <body>
 <div class="container">
   <div class="croc">🐊</div>
-  <h1>OpenCroc Studio</h1>
-  <p>AI-native E2E testing — Pixel Croc Office</p>
+  <h1>OpenClaw Feishu Progress</h1>
+  <p>OpenClaw relay + Feishu live progress bridge</p>
   <div class="status" id="status">Connecting...</div>
   <div id="graph-container"><div class="loading">Loading project graph...</div></div>
 </div>

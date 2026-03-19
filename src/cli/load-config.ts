@@ -4,6 +4,10 @@ import type { OpenCrocConfig } from '../types.js';
 const MODULE_NAME = 'opencroc';
 
 const SEARCH_PLACES = [
+  'openclaw-feishu-progress.config.ts',
+  'openclaw-feishu-progress.config.js',
+  'openclaw-feishu-progress.config.json',
+  '.openclaw-feishu-progressrc.json',
   'opencroc.config.ts',
   'opencroc.config.js',
   'opencroc.config.json',
@@ -26,7 +30,7 @@ export async function loadConfig(cwd?: string): Promise<LoadConfigResult> {
 
   if (!result || result.isEmpty) {
     throw new Error(
-      'No opencroc config found. Run `opencroc init` to create one.',
+      'No project config found. Create `openclaw-feishu-progress.config.*` or use the legacy `opencroc.config.*` name.',
     );
   }
 

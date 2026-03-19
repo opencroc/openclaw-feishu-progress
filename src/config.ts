@@ -8,7 +8,7 @@ import { createLlmProvider } from './adapters/llm-provider.js';
  *
  * @example
  * ```ts
- * // opencroc.config.ts
+ * // openclaw-feishu-progress.config.ts
  * import { defineConfig } from 'opencroc';
  *
  * export default defineConfig({
@@ -26,13 +26,20 @@ export function defineConfig(config: OpenCrocConfig): OpenCrocConfig {
 }
 
 /**
- * Load config from opencroc.config.ts using cosmiconfig.
+ * Load config from project config using cosmiconfig.
  * Falls back to default config if no file found.
  */
 export async function loadConfig(searchFrom?: string): Promise<OpenCrocConfig> {
   const { cosmiconfig } = await import('cosmiconfig');
   const explorer = cosmiconfig('opencroc', {
     searchPlaces: [
+      'openclaw-feishu-progress.config.ts',
+      'openclaw-feishu-progress.config.js',
+      'openclaw-feishu-progress.config.mjs',
+      'openclaw-feishu-progress.config.cjs',
+      '.openclaw-feishu-progressrc.json',
+      '.openclaw-feishu-progressrc.yaml',
+      '.openclaw-feishu-progressrc.yml',
       'opencroc.config.ts',
       'opencroc.config.js',
       'opencroc.config.mjs',

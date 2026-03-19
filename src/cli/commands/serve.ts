@@ -20,14 +20,14 @@ export async function serve(opts: ServeCommandOptions): Promise<void> {
     // No config file — use sensible defaults based on cwd
     config = { backendRoot: '.' };
     configPath = '(auto-detected)';
-    console.log(chalk.yellow('⚠ No opencroc config found, using current directory as backend root.'));
-    console.log(chalk.gray('  Tip: run `opencroc init` to create a config file.\n'));
+    console.log(chalk.yellow('⚠ No project config found, using current directory as backend root.'));
+    console.log(chalk.gray('  Tip: create `openclaw-feishu-progress.config.*` or keep using the legacy `opencroc.config.*` name.\n'));
   }
 
   const port = parseInt(opts.port || '8765', 10);
   const host = opts.host || 'localhost';
 
-  console.log(chalk.cyan('🐊 Starting OpenCroc Studio...'));
+  console.log(chalk.cyan('🐊 Starting OpenClaw Feishu Progress...'));
   console.log(chalk.gray(`   Config: ${configPath}`));
   console.log(chalk.gray(`   Backend: ${config.backendRoot}`));
 

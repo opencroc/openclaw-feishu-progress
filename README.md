@@ -1,96 +1,105 @@
 <p align="center">
-  <img src="assets/banner.png" alt="OpenCroc 横幅" width="820" />
+  <img src="assets/banner.png" alt="OpenClaw Feishu Progress 横幅" width="820" />
 </p>
 
-<h1 align="center">OpenCroc</h1>
+<h1 align="center">OpenClaw Feishu Progress</h1>
 
 <p align="center">
-  <strong>把任意后端仓库变成可理解的图谱、可执行的任务、可交付的报告，以及飞书里看得见的进度。</strong>
+  <strong>把 OpenClaw 的复杂飞书请求转成可追踪任务，并把 ACK、阶段进度和完成结果稳定回传到飞书。</strong>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/opencroc"><img src="https://img.shields.io/npm/v/opencroc?color=green" alt="npm version" /></a>
-  <a href="https://github.com/opencroc/opencroc/actions/workflows/ci.yml"><img src="https://github.com/opencroc/opencroc/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
-  <a href="https://github.com/opencroc/opencroc/blob/main/LICENSE"><img src="https://img.shields.io/github/license/opencroc/opencroc" alt="MIT License" /></a>
-  <a href="https://opencroc.com"><img src="https://img.shields.io/badge/docs-opencroc.com-blue" alt="Documentation" /></a>
+  <a href="https://github.com/opencroc/openclaw-feishu-progress/actions/workflows/ci.yml"><img src="https://github.com/opencroc/openclaw-feishu-progress/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://github.com/opencroc/openclaw-feishu-progress/blob/main/LICENSE"><img src="https://img.shields.io/github/license/opencroc/openclaw-feishu-progress" alt="MIT License" /></a>
+  <a href="https://github.com/opencroc/openclaw-feishu-progress"><img src="https://img.shields.io/badge/repo-openclaw--feishu--progress-blue" alt="Repository" /></a>
 </p>
 
 ---
 
 ## 一句话价值
 
-OpenCroc 把“读仓库、拆任务、生成测试、执行验证、回传进度、沉淀报告”收进同一条工具链，让研发、测试、产品和交付围绕同一份源码上下文协作。
+OpenClaw Feishu Progress 把“飞书收到复杂请求、快速 ACK、按阶段回进度、最终回结果”收进一条稳定链路，优先解决聊天场景里的长任务可见性问题。
 
 ## 核心特性
 
-- 源码感知扫描：识别模块、模型、路由、DTO 和依赖关系，不再只靠目录名猜结构
-- 本地 Studio 工作台：在一个 Web 界面里查看图谱、任务、Agent 活动和运行状态
-- 任务化执行模型：每个任务都有阶段、等待态、摘要和进度历史，适合长链路操作
-- 基于源码的 E2E 生成：在 [Playwright](https://playwright.dev) 之上生成更贴近真实后端结构的测试资产
-- 失败归因与受控自愈：失败后可以定位链路原因、给出修复建议并在受控条件下重试
-- 飞书进度桥接：支持 ACK、阶段进度、等待决策和完成回传
-- 多格式报告输出：支持 HTML、JSON、Markdown，方便工程、产品和交付对齐
+- OpenClaw 本机转发桥：把飞书私聊中的复杂请求先转到本机任务服务，再决定是否由 OpenClaw 自己回退回复
+- 飞书 ACK 与进度回传：支持任务开始、阶段进度、等待确认、完成、失败等消息类型
+- 同任务串行投递：避免并发发送导致的进度乱序
+- 本地任务化执行：把复杂对话请求变成带阶段、摘要和历史事件的可追踪任务
+- analysis 直出完成态：常见“这个项目是干什么的”类请求不再卡在等待确认
+- systemd 常驻运行：适合部署在 Linux 服务器上，配合飞书机器人长期运行
+- 可视化状态页：保留本地 Web 界面查看任务、图谱和运行状态
 
 ## 5 分钟快速开始
 
 ### 前置要求
 
 - Node.js 18+
-- 一个你想扫描或生成测试的后端仓库
-- 如果你准备执行生成后的测试，请先安装 `@playwright/test`
+- 一台 Linux 服务器
+- 一个可用的 OpenClaw 网关实例
+- 一组可用的飞书机器人凭据
 
 ### 1) 安装
 
 ```bash
-npm install --save-dev opencroc @playwright/test
+git clone git@github.com:opencroc/openclaw-feishu-progress.git
+cd openclaw-feishu-progress
+npm install
 ```
 
 ### 2) 初始化配置
 
-```bash
-npx opencroc init --yes
-```
+复制或编辑本地运行配置：
 
-这会在当前仓库创建一个起步版 `opencroc.config.ts`。
+```bash
+cp opencroc.config.js opencroc.config.local.js
+```
 
 ### 3) 先做一次 dry-run
 
-```bash
-npx opencroc generate --all --dry-run
-```
+先确认飞书配置和回传地址：
 
-先确认 OpenCroc 能否正确识别模块和生成路径，再决定是否真正落盘。
+```bash
+cat opencroc.config.js
+```
 
 ### 4) 启动 Studio
 
 ```bash
-npx opencroc serve --host 0.0.0.0 --port 8765 --no-open
+npm run build
+node dist/cli/index.js serve --host 0.0.0.0 --port 8765 --no-open
 ```
 
-本机打开 `http://127.0.0.1:8765`，查看图谱、任务和运行状态。
+本机打开 `http://127.0.0.1:8765`，查看任务和运行状态。
 
-### 5) 跑完整闭环
+### 5) 跑一次真实飞书 smoke
 
 ```bash
-npx opencroc run --report html,json
+curl -X POST http://127.0.0.1:8765/api/feishu/smoke/progress \
+  -H 'content-type: application/json' \
+  -d '{
+    "chatId": "oc_xxx",
+    "requestId": "om_xxx",
+    "title": "Smoke test from OpenClaw Feishu Progress"
+  }'
 ```
 
-第一次跑完后，你应该能得到：
+跑完后，你应该能看到：
 
-- `opencroc-output/` 下的生成产物
-- 一个可视化的本地 Studio
-- 可导出的 HTML、JSON 报告
+- 飞书立即收到 ACK
+- 飞书持续收到阶段进度
+- 飞书收到最终完成消息
 
 ## 一个真实 Demo
 
 ### Demo：飞书实时进度 smoke 测试
 
-如果你现在最关心的是“任务进度能不能稳定回到飞书”，先跑这条最短路径。
+如果你现在最关心的是“飞书里的任务进度能不能稳定回传”，先跑这条最短路径。
 
 最小配置：
 
 ```ts
-import { defineConfig } from 'opencroc';
+import { defineConfig } from './dist/index.js';
 
 export default defineConfig({
   backendRoot: './backend',
@@ -100,7 +109,7 @@ export default defineConfig({
     messageFormat: 'text',
     appId: process.env.FEISHU_APP_ID,
     appSecret: process.env.FEISHU_APP_SECRET,
-    baseTaskUrl: 'http://127.0.0.1:8765',
+    baseTaskUrl: process.env.OPENCLAW_FEISHU_PROGRESS_BASE_TASK_URL ?? 'http://127.0.0.1:8765',
     progressThrottlePercent: 15,
   },
 });
@@ -109,7 +118,7 @@ export default defineConfig({
 启动服务：
 
 ```bash
-npx opencroc serve --host 0.0.0.0 --port 8765 --no-open
+node dist/cli/index.js serve --host 0.0.0.0 --port 8765 --no-open
 ```
 
 触发 smoke：
@@ -120,7 +129,7 @@ curl -X POST http://127.0.0.1:8765/api/feishu/smoke/progress \
   -d '{
     "chatId": "oc_xxx",
     "requestId": "om_xxx",
-    "title": "Smoke test from local OpenCroc"
+    "title": "Smoke test from local OpenClaw Feishu Progress"
   }'
 ```
 
@@ -130,7 +139,7 @@ curl -X POST http://127.0.0.1:8765/api/feishu/smoke/progress \
 2. 收到多次阶段进度更新
 3. 收到最终完成消息
 
-如果这条 smoke 流程可用，说明 OpenCroc 的飞书出站回传链路已经打通，可以继续接复杂任务编排。
+如果这条 smoke 流程可用，说明 OpenClaw Feishu Progress 的飞书出站回传链路已经打通，可以继续接真实复杂请求。
 
 ## 架构图
 
@@ -147,7 +156,7 @@ flowchart LR
   B --> I
 ```
 
-OpenCroc 当前可以理解成 5 层：
+OpenClaw Feishu Progress 当前可以理解成 5 层：
 
 - Ingest：扫描源码、模型、控制器、DTO 和关系
 - Understand：构建知识图谱和任务可用的项目上下文
@@ -157,29 +166,28 @@ OpenCroc 当前可以理解成 5 层：
 
 ## 场景示例
 
-- 旧系统接手：先把大型后端服务扫成图谱，给新同学一个能探索的结构视图
-- 回归生成：发布前根据真实源码结构生成 Playwright 用例，减少手写测试压力
-- 飞书进度回传：长任务执行时，在群里持续看到 ACK、阶段进度和完成状态
-- 架构评审：把仓库结构、模块关系和生成报告带进评审会，而不是只看目录树
-- 运行态排障：在本地 Studio 里看任务和 Agent 活动，而不是手工拼日志
+- 飞书机器人复杂请求：先回 ACK，再按阶段把处理进度推回飞书
+- OpenClaw 兜底接管：复杂请求转本机任务服务，简单请求仍可由 OpenClaw 原链路处理
+- 线上长任务可见化：减少“机器人没反应”和“用户重复追问”的体验问题
+- 联调排障：在本地 Web 页和 systemd/journal 里同时看任务和服务状态
+- 独立开源部署：把这条链路单独维护，而不是依附在原始大项目分支里
 
 ## 跟竞品对比
 
-| 维度 | OpenCroc | Playwright + 手写脚本 | 代码搜索 / Code QA 工具 | 内部研发门户 |
+| 维度 | OpenClaw Feishu Progress | 直接让 OpenClaw 回长答案 | 手写飞书机器人脚本 | 通用任务系统 |
 | --- | --- | --- | --- | --- |
-| 仓库到图谱的理解 | 内建 | 手工维护 | 局部 | 通常依赖外部系统 |
-| 任务阶段和进度模型 | 内建 | 手工维护 | 通常没有 | 部分具备 |
-| 基于源码的测试生成 | 内建 | 手工维护 | 不支持 | 不支持 |
-| 飞书进度回传 | 内建 | 需要自行集成 | 不支持 | 少见 |
-| 本地可视化工作台 | 内建 | 没有 | 局部 | 通常有 |
-| 失败归因和自愈 | 内建 | 手工处理 | 不支持 | 不支持 |
-| 最适合谁 | 既要理解仓库又要执行任务的团队 | 愿意手写并维护所有测试的团队 | 主要做代码检索和问答的团队 | 主要做目录、服务台账和内部文档的团队 |
+| 飞书复杂请求转任务 | 内建 | 没有 | 手工维护 | 部分具备 |
+| ACK 与阶段进度回传 | 内建 | 没有 | 手工维护 | 取决于实现 |
+| 乱序控制 | 内建串行投递 | 无 | 自己处理 | 取决于实现 |
+| OpenClaw 本机桥接 | 内建 | 无 | 手工集成 | 通常没有 |
+| Linux 常驻部署 | 直接支持 | 取决于脚本 | 可做但零散 | 一般支持 |
+| 最适合谁 | 想把 OpenClaw + 飞书进度打通的团队 | 只要简单问答的团队 | 愿意手写所有桥接逻辑的团队 | 已有成熟任务平台的团队 |
 
 ## Roadmap
 
-- 当前：Studio 工作台、源码扫描分析、基于源码的生成、报告输出和飞书 smoke 进度已可用
-- 下一步：补强飞书卡片交互、等待态决策流、任务摘要质量和 Studio 任务视图
-- 后续：扩展更多适配器、远程执行器、多用户协作和更完整的仓库智能能力
+- 当前：OpenClaw 转发、飞书 ACK、阶段进度、analysis 完成态、本地 smoke 与 systemd 部署已可用
+- 下一步：补强飞书卡片交互、等待态决策流、任务摘要质量和服务监控
+- 后续：抽离更完整的任务执行器、更多消息渠道、更多可观测性能力
 
 ## 更多文档
 
@@ -192,4 +200,4 @@ OpenCroc 当前可以理解成 5 层：
 
 ## License
 
-[MIT](LICENSE) Copyright 2026 OpenCroc Contributors
+[MIT](LICENSE) Copyright 2026 OpenClaw Feishu Progress Contributors
