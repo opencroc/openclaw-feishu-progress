@@ -173,4 +173,43 @@ export class FeishuApiDelivery implements FeishuBridgeDelivery {
       threadId: json.data?.thread_id,
     };
   }
+
+  async update(messageId: string, message: FeishuOutboundMessage): Promise<FeishuDeliveryReceipt | void> {
+    if (!this.isLive()) {
+      return;
+    }
+
+    if (!messageId.trim()) {
+      throw new Error('Feishu outbound update missing messageId');
+    }
+
+    const token = await this.getTenantAccessToken();
+    const payload = resolveMessagePayload(message);
+    const response = await fetch(`${resolveApiBaseUrl(this.config)}/im/v1/messages/${encodeURIComponent(messageId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        content: payload.content,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Failed to update Feishu message: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`);
+    }
+
+    const json = await response.json() as FeishuSendMessageResponse;
+    if (json.code !== 0) {
+      throw new Error(`Feishu update message error: ${json.msg || json.code}`);
+    }
+
+    return {
+      messageId: json.data?.message_id ?? messageId,
+      rootId: json.data?.root_id,
+      threadId: json.data?.thread_id,
+    };
+  }
 }

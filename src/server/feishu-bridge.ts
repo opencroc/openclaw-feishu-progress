@@ -9,7 +9,8 @@ export interface FeishuBridgeConfig {
   tenantAccessToken?: string;
   apiBaseUrl?: string;
   mode?: 'mock' | 'live';
-  messageFormat?: 'text' | 'card';
+  messageFormat?: 'text' | 'card' | 'card-live';
+  finalSummaryMode?: 'none' | 'complete' | 'failed' | 'both';
 }
 
 export interface FeishuTaskTarget {
@@ -31,7 +32,9 @@ export interface FeishuCardPayload {
     title: { tag: 'plain_text'; content: string };
     template?: 'blue' | 'wathet' | 'turquoise' | 'green' | 'yellow' | 'orange' | 'red' | 'grey' | 'indigo' | 'purple';
   };
-  elements: Array<Record<string, unknown>>;
+  body: {
+    elements: Array<Record<string, unknown>>;
+  };
 }
 
 export interface FeishuOutboundMessage {
@@ -46,6 +49,7 @@ export interface FeishuOutboundMessage {
   link?: string;
   decision?: TaskDecisionPrompt;
   card?: FeishuCardPayload;
+  presentation?: 'auto' | 'text' | 'card';
 }
 
 export interface FeishuDeliveryReceipt {
@@ -56,6 +60,7 @@ export interface FeishuDeliveryReceipt {
 
 export interface FeishuBridgeDelivery {
   send(message: FeishuOutboundMessage): Promise<FeishuDeliveryReceipt | void>;
+  update?(messageId: string, message: FeishuOutboundMessage): Promise<FeishuDeliveryReceipt | void>;
 }
 
 export interface FeishuTaskRequest {
@@ -84,6 +89,7 @@ interface TaskSubscription {
   rootId?: string;
   threadId?: string;
   replyToMessageId?: string;
+  finalSummarySentFor?: 'task-complete' | 'task-failed';
 }
 
 type DeliveryQueue = Promise<void>;
@@ -224,15 +230,8 @@ function createTaskCard(message: FeishuOutboundMessage): FeishuCardPayload {
 
   if (message.link) {
     elements.push({
-      tag: 'action',
-      actions: [
-        {
-          tag: 'button',
-          text: { tag: 'plain_text', content: '查看任务详情' },
-          type: 'primary',
-          url: message.link,
-        },
-      ],
+      tag: 'markdown',
+      content: `[查看任务详情](${message.link})`,
     });
   }
 
@@ -257,11 +256,38 @@ function createTaskCard(message: FeishuOutboundMessage): FeishuCardPayload {
       },
       template: cardTemplateForStatus(message.status),
     },
-    elements,
+    body: {
+      elements,
+    },
   };
 }
 
 export class FeishuProgressBridge {
+  private usesCardRendering(message: FeishuOutboundMessage): boolean {
+    if (message.presentation === 'text') return false;
+    if (message.presentation === 'card') return true;
+    if (this.config.messageFormat === 'card-live') return true;
+    if (this.config.messageFormat !== 'card') return false;
+    return message.kind !== 'task-progress';
+  }
+
+  private usesLiveCardUpdates(): boolean {
+    return this.config.messageFormat === 'card-live';
+  }
+
+  private resolveFinalSummaryMode(): 'none' | 'complete' | 'failed' | 'both' {
+    if (this.config.finalSummaryMode) return this.config.finalSummaryMode;
+    return this.usesLiveCardUpdates() ? 'both' : 'none';
+  }
+
+  private shouldSendFinalSummary(kind: FeishuOutboundMessage['kind']): boolean {
+    const mode = this.resolveFinalSummaryMode();
+    if (mode === 'none') return false;
+    if (mode === 'both') return kind === 'task-complete' || kind === 'task-failed';
+    if (mode === 'complete') return kind === 'task-complete';
+    return kind === 'task-failed';
+  }
+
   private enqueueDelivery(taskId: string, deliver: () => Promise<void>): Promise<void> {
     const previous = this.deliveryQueues.get(taskId) ?? Promise.resolve();
     const next = previous.catch(() => {}).then(deliver);
@@ -292,8 +318,10 @@ export class FeishuProgressBridge {
   }
 
   private withMessageFormat(message: FeishuOutboundMessage): FeishuOutboundMessage {
-    if (this.config.messageFormat !== 'card') return message;
-    if (message.kind === 'task-progress') return message;
+    if (!this.usesCardRendering(message)) return {
+      ...message,
+      card: undefined,
+    };
     return {
       ...message,
       card: message.card ?? createTaskCard(message),
@@ -301,14 +329,50 @@ export class FeishuProgressBridge {
   }
 
   private async sendAndTrack(taskId: string, message: FeishuOutboundMessage): Promise<void> {
-    const receipt = await this.delivery.send(this.withReplyContext(taskId, this.withMessageFormat(message)));
+    const formatted = this.withMessageFormat(message);
     const subscription = this.subscriptions.get(taskId);
+
+    if (
+      subscription
+      && this.usesLiveCardUpdates()
+      && formatted.card
+      && subscription.firstMessageId
+      && this.delivery.update
+    ) {
+      await this.delivery.update(subscription.firstMessageId, formatted);
+      subscription.lastMessageId = subscription.firstMessageId;
+      return;
+    }
+
+    const receipt = await this.delivery.send(this.withReplyContext(taskId, formatted));
     if (!subscription || !receipt) return;
     subscription.firstMessageId ??= receipt.messageId;
     subscription.lastMessageId = receipt.messageId ?? subscription.lastMessageId;
     subscription.rootId = receipt.rootId ?? subscription.rootId ?? subscription.firstMessageId;
     subscription.threadId = receipt.threadId ?? subscription.threadId;
     subscription.replyToMessageId = subscription.firstMessageId ?? subscription.replyToMessageId;
+  }
+
+  private async sendFinalSummaryIfNeeded(taskId: string, message: FeishuOutboundMessage): Promise<void> {
+    if (!this.shouldSendFinalSummary(message.kind)) return;
+    const subscription = this.subscriptions.get(taskId);
+    if (!subscription) return;
+    const finalKind = message.kind === 'task-complete' || message.kind === 'task-failed'
+      ? message.kind
+      : null;
+    if (!finalKind) return;
+    if (subscription.finalSummarySentFor === finalKind) return;
+
+    subscription.finalSummarySentFor = finalKind;
+    const receipt = await this.delivery.send(this.withReplyContext(taskId, {
+      ...message,
+      card: undefined,
+      presentation: 'text',
+    }));
+    if (!receipt) return;
+    subscription.lastMessageId = receipt.messageId ?? subscription.lastMessageId;
+    subscription.rootId = receipt.rootId ?? subscription.rootId;
+    subscription.threadId = receipt.threadId ?? subscription.threadId;
   }
 
   private readonly delivery: FeishuBridgeDelivery;
@@ -328,6 +392,7 @@ export class FeishuProgressBridge {
       apiBaseUrl: config.apiBaseUrl,
       mode: config.mode,
       messageFormat: config.messageFormat,
+      finalSummaryMode: config.finalSummaryMode,
     };
   }
 
@@ -373,7 +438,7 @@ export class FeishuProgressBridge {
       detail: request.detail,
       link,
     };
-    if (this.config.messageFormat === 'card') {
+    if (this.usesCardRendering(message)) {
       message.card = createTaskCard(message);
     }
     return {
@@ -453,7 +518,7 @@ export class FeishuProgressBridge {
 
       if (task.status === 'done') {
         subscription.lastEventType = 'done';
-        await this.sendAndTrack(task.id, {
+        const completeMessage: FeishuOutboundMessage = {
           kind: 'task-complete',
           target: subscription.target,
           taskId: task.id,
@@ -463,13 +528,15 @@ export class FeishuProgressBridge {
           stage,
           detail: latest?.message,
           link,
-        });
+        };
+        await this.sendAndTrack(task.id, completeMessage);
+        await this.sendFinalSummaryIfNeeded(task.id, completeMessage);
         return;
       }
 
       if (task.status === 'failed') {
         subscription.lastEventType = 'failed';
-        await this.sendAndTrack(task.id, {
+        const failedMessage: FeishuOutboundMessage = {
           kind: 'task-failed',
           target: subscription.target,
           taskId: task.id,
@@ -479,7 +546,9 @@ export class FeishuProgressBridge {
           stage,
           detail: latest?.message,
           link,
-        });
+        };
+        await this.sendAndTrack(task.id, failedMessage);
+        await this.sendFinalSummaryIfNeeded(task.id, failedMessage);
         return;
       }
 

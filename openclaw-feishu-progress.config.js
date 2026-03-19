@@ -5,7 +5,8 @@ export default defineConfig({
   feishu: {
     enabled: true,
     mode: 'live',
-    messageFormat: 'text',
+    messageFormat: 'card-live',
+    finalSummaryMode: 'both',
     appId: process.env.FEISHU_APP_ID,
     appSecret: process.env.FEISHU_APP_SECRET,
     tenantAccessToken: process.env.FEISHU_TENANT_ACCESS_TOKEN,

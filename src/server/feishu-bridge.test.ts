@@ -188,6 +188,60 @@ describe('FeishuProgressBridge', () => {
     expect((sent[2]?.card as any).header.title.content).toContain('任务已完成');
   });
 
+  it('updates the same card for progress in card-live mode', async () => {
+    const send = vi.fn(async (message: FeishuOutboundMessage) => {
+      expect(message.card).toBeDefined();
+      return { messageId: 'om_live_card_1', rootId: 'om_live_card_1' };
+    });
+    const update = vi.fn(async () => ({ messageId: 'om_live_card_1', rootId: 'om_live_card_1' }));
+    const bridge = new FeishuProgressBridge({ send, update }, { messageFormat: 'card-live', finalSummaryMode: 'none', baseTaskUrl: 'https://demo.opencroc.ai' });
+    bridge.bindTask('task_123', { chatId: 'chat_123', source: 'feishu', requestId: 'om_user_1', replyToMessageId: 'om_user_1', rootMessageId: 'om_user_1' });
+
+    await bridge.handleTaskUpdate(makeTask({ progress: 10 }));
+    await bridge.handleTaskUpdate(makeTask({
+      progress: 30,
+      events: [
+        { type: 'created', message: 'Task created', time: Date.now() },
+        { type: 'progress', message: 'Gathering context', progress: 30, stageKey: 'scan', time: Date.now() },
+      ],
+    }));
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0].kind).toBe('task-ack');
+    expect(send.mock.calls[0]?.[0].card).toBeDefined();
+    expect(update.mock.calls[0]?.[1].kind).toBe('task-progress');
+    expect(update.mock.calls[0]?.[1].card).toBeDefined();
+    expect((update.mock.calls[0]?.[1].card as any).header.title.content).toContain('任务进度更新');
+  });
+
+  it('can send one extra completion summary after the live card is updated', async () => {
+    const send = vi.fn(async (message: FeishuOutboundMessage) => ({ messageId: `om_${send.mock.calls.length + 1}`, rootId: 'om_live_card_1' }));
+    const update = vi.fn(async () => ({ messageId: 'om_live_card_1', rootId: 'om_live_card_1' }));
+    const bridge = new FeishuProgressBridge({ send, update }, { messageFormat: 'card-live', finalSummaryMode: 'complete', baseTaskUrl: 'https://demo.opencroc.ai' });
+    bridge.bindTask('task_123', { chatId: 'chat_123', source: 'feishu' });
+
+    await bridge.handleTaskUpdate(makeTask({ progress: 10 }));
+    await bridge.handleTaskUpdate(makeTask({
+      status: 'done',
+      progress: 100,
+      summary: 'Pipeline complete',
+      events: [
+        { type: 'created', message: 'Task created', time: Date.now() },
+        { type: 'done', message: 'Pipeline complete', time: Date.now() },
+      ],
+    }));
+
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0].kind).toBe('task-ack');
+    expect(send.mock.calls[1]?.[0].kind).toBe('task-complete');
+    expect(send.mock.calls[1]?.[0].card).toBeUndefined();
+    expect(send.mock.calls[1]?.[0].presentation).toBe('text');
+    expect(update.mock.calls[0]?.[1].kind).toBe('task-complete');
+    expect(update.mock.calls[0]?.[1].card).toBeDefined();
+  });
+
   it('sends completion update when task is done', async () => {
     const sent: FeishuOutboundMessage[] = [];
     const bridge = new FeishuProgressBridge({ send: async (message) => { sent.push(message); } });

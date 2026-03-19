@@ -87,7 +87,9 @@ describe('FeishuApiDelivery', () => {
           title: { tag: 'plain_text', content: '任务已开始：task_123' },
           template: 'blue',
         },
-        elements: [],
+        body: {
+          elements: [],
+        },
       },
     });
 
@@ -95,6 +97,37 @@ describe('FeishuApiDelivery', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(String(init.body)).toContain('"msg_type":"interactive"');
     expect(String(init.body)).toContain('任务已开始：task_123');
+  });
+
+  it('updates an existing interactive card message by message id', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ code: 0, msg: 'ok', data: { message_id: 'om_card_1', root_id: 'om_root_card' } }),
+    }));
+    global.fetch = fetchMock as typeof fetch;
+    const delivery = new FeishuApiDelivery({ enabled: true, mode: 'live', tenantAccessToken: 'tenant_token_xxx' });
+
+    const receipt = await delivery.update?.('om_card_1', {
+      ...sampleMessage,
+      card: {
+        schema: '2.0',
+        header: {
+          title: { tag: 'plain_text', content: '任务进度更新：task_123' },
+          template: 'blue',
+        },
+        body: {
+          elements: [],
+        },
+      },
+    });
+
+    expect(receipt).toEqual({ messageId: 'om_card_1', rootId: 'om_root_card', threadId: undefined });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/im/v1/messages/om_card_1');
+    expect(init.method).toBe('PATCH');
+    expect(String(init.body)).toContain('任务进度更新：task_123');
+    expect(String(init.body)).not.toContain('"msg_type"');
   });
 
   it('fetches tenant token when app credentials are provided', async () => {
