@@ -8,7 +8,7 @@ function wait(ms: number): Promise<void> {
 export function registerFeishuSmokeRoutes(app: FastifyInstance, office: CrocOffice): void {
   app.post<{ Body: { chatId: string; requestId?: string; title?: string; mode?: 'text' | 'card' } }>('/api/feishu/smoke/progress', async (req, reply) => {
     const title = req.body.title || 'Feishu progress smoke test';
-    const task = office.createChatTask(title);
+    const task = office.createChatTask(title, title);
 
     office.bindTaskToFeishu(task.id, {
       chatId: req.body.chatId,

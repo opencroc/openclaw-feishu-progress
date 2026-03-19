@@ -8,6 +8,27 @@ const LEGACY_ROUTE_ALIASES: Record<string, string> = {
 
 const DYNAMIC_ROUTE_PREFIXES = ['/tasks'];
 
+function splitPathSearchHash(input: string): { path: string; suffix: string } {
+  const hashIndex = input.indexOf('#');
+  const searchIndex = input.indexOf('?');
+  let cutIndex = -1;
+
+  if (searchIndex >= 0 && hashIndex >= 0) {
+    cutIndex = Math.min(searchIndex, hashIndex);
+  } else {
+    cutIndex = Math.max(searchIndex, hashIndex);
+  }
+
+  if (cutIndex === -1) {
+    return { path: input, suffix: '' };
+  }
+
+  return {
+    path: input.slice(0, cutIndex),
+    suffix: input.slice(cutIndex),
+  };
+}
+
 export function normalizeAppPath(pathname: string): string {
   if (!pathname) {
     return '/';
@@ -31,12 +52,15 @@ export function getCurrentAppPath(): string {
 }
 
 export function navigate(to: string, options?: { replace?: boolean }): void {
-  const nextPath = normalizeAppPath(to);
+  const { path, suffix } = splitPathSearchHash(to);
+  const nextPath = normalizeAppPath(path);
+  const nextUrl = `${nextPath}${suffix}`;
   const currentPath = getCurrentAppPath();
+  const currentUrl = `${currentPath}${window.location.search}${window.location.hash}`;
 
-  if (nextPath !== currentPath) {
+  if (nextUrl !== currentUrl) {
     const method = options?.replace ? 'replaceState' : 'pushState';
-    window.history[method]({}, '', nextPath);
+    window.history[method]({}, '', nextUrl);
   }
 
   window.dispatchEvent(new Event(ROUTE_CHANGE_EVENT));

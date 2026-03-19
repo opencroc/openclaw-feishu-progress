@@ -35,6 +35,7 @@ export interface TaskRecord {
   id: string;
   kind: string;
   title: string;
+  sourceText?: string;
   status: TaskStatus;
   progress: number;
   currentStageKey?: string;
@@ -48,9 +49,15 @@ export interface TaskRecord {
   events: TaskEvent[];
 }
 
+export interface TaskSnapshotStore {
+  load(): TaskRecord[];
+  save(tasks: TaskRecord[]): void;
+}
+
 export interface CreateTaskInput {
   kind: string;
   title: string;
+  sourceText?: string;
   stageLabels: Array<{ key: string; label: string }>;
 }
 
@@ -64,7 +71,12 @@ function clampProgress(value: number): number {
 }
 
 export class TaskStore {
-  private tasks = new Map<string, TaskRecord>();
+  private tasks: Map<string, TaskRecord>;
+
+  constructor(private readonly snapshotStore: TaskSnapshotStore | null = null) {
+    const tasks = this.snapshotStore?.load() ?? [];
+    this.tasks = new Map(tasks.map((task) => [task.id, structuredClone(task)]));
+  }
 
   create(input: CreateTaskInput): TaskRecord {
     const createdAt = now();
@@ -73,6 +85,7 @@ export class TaskStore {
       id,
       kind: input.kind,
       title: input.title,
+      sourceText: input.sourceText,
       status: 'queued',
       progress: 0,
       createdAt,
@@ -87,6 +100,7 @@ export class TaskStore {
       ],
     };
     this.tasks.set(id, task);
+    this.persist();
     return structuredClone(task);
   }
 
@@ -108,6 +122,7 @@ export class TaskStore {
     updater(task);
     task.updatedAt = now();
     this.tasks.set(id, task);
+    this.persist();
     return structuredClone(task);
   }
 
@@ -222,5 +237,9 @@ export class TaskStore {
       }
       task.events.push({ type: 'failed', message, level: 'error', progress: task.progress, stageKey: task.currentStageKey, time: now() });
     });
+  }
+
+  private persist(): void {
+    this.snapshotStore?.save([...this.tasks.values()].map((task) => structuredClone(task)));
   }
 }

@@ -31,7 +31,11 @@ export default function AppRouter() {
   useEffect(() => {
     document.title = route.title;
 
-    if (route.path !== pathname) {
+    const routeMatchesPath = route.path === '/'
+      ? pathname === '/'
+      : pathname === route.path || pathname.startsWith(`${route.path}/`);
+
+    if (!routeMatchesPath) {
       navigate(route.path, { replace: true });
     }
   }, [pathname, route.path, route.title]);

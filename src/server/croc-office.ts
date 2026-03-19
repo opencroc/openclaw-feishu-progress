@@ -80,7 +80,7 @@ export class CrocOffice {
   private agents: CrocAgent[];
   private cachedGraph: KnowledgeGraph | null = null;
   private running = false;
-  private readonly taskStore = new TaskStore();
+  private readonly taskStore: TaskStore;
   private activeTaskId: string | null = null;
   private feishuBridge: FeishuProgressBridge | null = null;
   private lastPipelineResult: PipelineRunResult | null = null;
@@ -94,10 +94,11 @@ export class CrocOffice {
     'thinking',
   ]);
 
-  constructor(config: OpenCrocConfig, cwd: string) {
+  constructor(config: OpenCrocConfig, cwd: string, options: { taskStore?: TaskStore } = {}) {
     this.config = config;
     this.cwd = cwd;
     this.agents = DEFAULT_AGENTS.map((a) => ({ ...a }));
+    this.taskStore = options.taskStore ?? new TaskStore();
   }
 
   addClient(ws: WebSocket): void {
@@ -128,28 +129,28 @@ export class CrocOffice {
     }
   }
 
-  createTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>): TaskRecord {
-    const task = this.taskStore.create({ kind, title, stageLabels });
+  createTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>, sourceText?: string): TaskRecord {
+    const task = this.taskStore.create({ kind, title, stageLabels, sourceText });
     void this.emitTaskUpdate(task);
     return task;
   }
 
-  createChatTask(title: string): TaskRecord {
+  createChatTask(title: string, sourceText?: string): TaskRecord {
     return this.createTask('chat', title, [
       { key: 'receive', label: 'Receive task' },
       { key: 'understand', label: 'Understand problem' },
       { key: 'gather', label: 'Gather materials / scan context' },
       { key: 'generate', label: 'Generate answer' },
       { key: 'finalize', label: 'Finalize output' },
-    ]);
+    ], sourceText);
   }
 
-  ensureActiveTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>): TaskRecord {
+  ensureActiveTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>, sourceText?: string): TaskRecord {
     if (this.activeTaskId) {
       const existing = this.taskStore.get(this.activeTaskId);
       if (existing) return existing;
     }
-    const task = this.createTask(kind, title, stageLabels);
+    const task = this.createTask(kind, title, stageLabels, sourceText);
     this.activateTask(task.id);
     return task;
   }

@@ -73,7 +73,7 @@ export async function startComplexFeishuChatTask(
   feishuBridge: FeishuProgressBridge,
   params: FeishuComplexTaskStartParams,
 ): Promise<FeishuComplexTaskStartOutcome> {
-  const task = office.createChatTask(buildTitle(params.text));
+  const task = office.createChatTask(buildTitle(params.text), params.text);
   office.bindTaskToFeishu(task.id, {
     chatId: params.chatId,
     threadId: params.threadId,

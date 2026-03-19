@@ -94,7 +94,7 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
 
   // POST /api/feishu/tasks/start — create a chat task for a complex Feishu request and return immediate ACK payload
   app.post<{ Body: { title: string; chatId: string; threadId?: string; requestId?: string; detail?: string } }>('/api/feishu/tasks/start', async (req) => {
-    const task = office.createChatTask(req.body.title);
+    const task = office.createChatTask(req.body.title, req.body.title);
     office.bindTaskToFeishu(task.id, {
       chatId: req.body.chatId,
       threadId: req.body.threadId,

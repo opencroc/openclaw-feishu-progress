@@ -1,3 +1,4 @@
+import { FilePlanetEdgeStore } from './edge-store.js';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -6,9 +7,13 @@ import { dirname, join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { registerProjectRoutes } from './routes/project.js';
 import { registerAgentRoutes } from './routes/agents.js';
+import { registerPlanetRoutes } from './routes/planets.js';
 import { registerStudioRoutes } from './routes/studio.js';
 import { CrocOffice } from './croc-office.js';
+import { FilePlanetMetaStore } from './planet-meta-store.js';
 import { FileStudioSnapshotStore } from './studio-store.js';
+import { FileTaskSnapshotStore } from './task-store.file.js';
+import { TaskStore } from './task-store.js';
 import { FeishuProgressBridge } from './feishu-bridge.js';
 import { FeishuApiDelivery } from './feishu-delivery.js';
 import { registerFeishuIngressRoutes } from './feishu-ingress.js';
@@ -62,7 +67,12 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   }
 
   // --- Croc Office (Agent orchestrator) ---
-  const office = new CrocOffice(opts.config, opts.cwd);
+  const taskSnapshotStore = new FileTaskSnapshotStore(resolve(opts.cwd, '.opencroc/task-snapshots.json'));
+  const planetMetaStore = new FilePlanetMetaStore(resolve(opts.cwd, '.opencroc/planet-meta.json'));
+  const edgeStore = new FilePlanetEdgeStore(resolve(opts.cwd, '.opencroc/planet-edges.json'));
+  const office = new CrocOffice(opts.config, opts.cwd, {
+    taskStore: new TaskStore(taskSnapshotStore),
+  });
   const snapshotStore = new FileStudioSnapshotStore(resolve(opts.cwd, '.opencroc/studio-snapshot.json'));
   const feishuConfig = {
     ...(opts.config.feishu ?? {}),
@@ -76,6 +86,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   // --- REST API routes ---
   registerProjectRoutes(app, office);
   registerAgentRoutes(app, office);
+  registerPlanetRoutes(app, office, planetMetaStore, edgeStore);
   registerStudioRoutes(app, office, snapshotStore);
   registerFeishuIngressRoutes(app, office, feishuBridge);
   registerFeishuRelayRoutes(app, office, feishuBridge);
@@ -114,6 +125,10 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   });
 
   app.get('/tasks/:id', (_req, reply) => {
+    return sendSpaEntry(reply);
+  });
+
+  app.get('/universe', (_req, reply) => {
     return sendSpaEntry(reply);
   });
 

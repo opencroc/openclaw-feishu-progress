@@ -16,6 +16,7 @@ const OfficePage = lazy(() => import('@pages/office'));
 const StudioPage = lazy(() => import('@pages/studio'));
 const PixelPage = lazy(() => import('@pages/pixel'));
 const TasksPage = lazy(() => import('@pages/tasks/page'));
+const UniversePage = lazy(() => import('@pages/universe'));
 
 export const appRoutes: AppRoute[] = [
   {
@@ -53,6 +54,15 @@ export const appRoutes: AppRoute[] = [
     description: 'OpenCroc task progress view',
     variant: 'graph',
     component: TasksPage,
+  },
+  {
+    id: 'universe',
+    path: '/universe',
+    title: 'OpenCroc Universe',
+    navLabel: 'Universe',
+    description: 'OpenCroc full-screen task universe view',
+    variant: 'graph',
+    component: UniversePage,
   },
 ];
 
