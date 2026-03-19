@@ -92,11 +92,10 @@ async function readPackageSummary(cwd: string): Promise<PackageJsonSummary | und
 }
 
 async function readPreferredReadme(cwd: string): Promise<string | undefined> {
-  const candidates = ['README.zh-CN.md', 'README.md', 'README.en.md'];
+  const candidates = ['README.md'];
   for (const name of candidates) {
     const content = await readUtf8(resolve(cwd, name));
     if (!content) continue;
-    if (name === 'README.md' && /^README\.zh-CN\.md:/m.test(content)) continue;
     return content;
   }
   return undefined;
