@@ -241,9 +241,40 @@ describe('FeishuProgressBridge', () => {
     expect(send.mock.calls[1]?.[0].kind).toBe('task-complete');
     expect(send.mock.calls[1]?.[0].card).toBeUndefined();
     expect(send.mock.calls[1]?.[0].presentation).toBe('text');
+    expect(send.mock.calls[1]?.[0].text).toContain('Pipeline complete');
     expect(update.mock.calls[0]?.[1].kind).toBe('task-complete');
     expect(update.mock.calls[0]?.[1].card).toBeDefined();
-    expect((update.mock.calls[0]?.[1].card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(true);
+    expect(update.mock.calls[0]?.[1].detail).toBe('任务已完成，最终答案已单独发送');
+    expect((update.mock.calls[0]?.[1].card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(false);
+    expect(JSON.stringify(update.mock.calls[0]?.[1].card)).not.toContain('Pipeline complete');
+  });
+
+  it('sends one extra failure summary after the live card is updated', async () => {
+    const send = vi.fn(async (message: FeishuOutboundMessage) => ({ messageId: `om_${send.mock.calls.length + 1}`, rootId: 'om_live_card_1' }));
+    const update = vi.fn(async () => ({ messageId: 'om_live_card_1', rootId: 'om_live_card_1' }));
+    const bridge = new FeishuProgressBridge({ send, update }, { messageFormat: 'card-live', finalSummaryMode: 'failed', baseTaskUrl: 'https://demo.opencroc.ai' });
+    bridge.bindTask('task_123', { chatId: 'chat_123', source: 'feishu' });
+
+    await bridge.handleTaskUpdate(makeTask({ progress: 10 }));
+    await bridge.handleTaskUpdate(makeTask({
+      status: 'failed',
+      progress: 90,
+      events: [
+        { type: 'created', message: 'Task created', time: Date.now() },
+        { type: 'failed', message: 'Pipeline failed because of bad config', level: 'error', time: Date.now() },
+      ],
+    }));
+
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[1]?.[0].kind).toBe('task-failed');
+    expect(send.mock.calls[1]?.[0].card).toBeUndefined();
+    expect(send.mock.calls[1]?.[0].presentation).toBe('text');
+    expect(send.mock.calls[1]?.[0].text).toContain('Pipeline failed because of bad config');
+    expect(update.mock.calls[0]?.[1].kind).toBe('task-failed');
+    expect(update.mock.calls[0]?.[1].detail).toBe('任务执行失败，错误摘要已单独发送');
+    expect((update.mock.calls[0]?.[1].card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(false);
+    expect(JSON.stringify(update.mock.calls[0]?.[1].card)).not.toContain('Pipeline failed because of bad config');
   });
 
   it('sends completion update when task is done', async () => {

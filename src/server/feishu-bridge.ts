@@ -20,6 +20,7 @@ export interface FeishuTaskTarget {
   replyToMessageId?: string;
   rootMessageId?: string;
   source?: 'feishu';
+  suppressFinalSummary?: boolean;
 }
 
 export interface FeishuCardPayload {
@@ -313,6 +314,13 @@ export class FeishuProgressBridge {
     return kind === 'task-failed';
   }
 
+  private resolveTerminalCardDetail(kind: 'task-complete' | 'task-failed', fallback: string | undefined): string | undefined {
+    if (!this.usesLiveCardUpdates()) return fallback;
+    return kind === 'task-complete'
+      ? '任务已完成，最终答案已单独发送'
+      : '任务执行失败，错误摘要已单独发送';
+  }
+
   private enqueueDelivery(taskId: string, deliver: () => Promise<void>): Promise<void> {
     const previous = this.deliveryQueues.get(taskId) ?? Promise.resolve();
     const next = previous.catch(() => {}).then(deliver);
@@ -347,9 +355,15 @@ export class FeishuProgressBridge {
       ...message,
       card: undefined,
     };
+    const cardMessage = this.usesLiveCardUpdates()
+      ? {
+          ...message,
+          summary: undefined,
+        }
+      : message;
     return {
-      ...message,
-      card: message.card ?? createTaskCard(message),
+      ...cardMessage,
+      card: cardMessage.card ?? createTaskCard(cardMessage),
     };
   }
 
@@ -379,9 +393,10 @@ export class FeishuProgressBridge {
   }
 
   private async sendFinalSummaryIfNeeded(taskId: string, message: FeishuOutboundMessage): Promise<void> {
-    if (!this.shouldSendFinalSummary(message.kind)) return;
     const subscription = this.subscriptions.get(taskId);
     if (!subscription) return;
+    if (subscription.target.suppressFinalSummary) return;
+    if (!this.shouldSendFinalSummary(message.kind)) return;
     const finalKind = message.kind === 'task-complete' || message.kind === 'task-failed'
       ? message.kind
       : null;
@@ -551,7 +566,7 @@ export class FeishuProgressBridge {
           progress: task.progress,
           status: task.status,
           stage,
-          detail: latest?.message,
+          detail: this.resolveTerminalCardDetail('task-complete', latest?.message),
           summary: task.summary,
           link,
         };
@@ -570,7 +585,7 @@ export class FeishuProgressBridge {
           progress: task.progress,
           status: task.status,
           stage,
-          detail: latest?.message,
+          detail: this.resolveTerminalCardDetail('task-failed', latest?.message),
           link,
         };
         await this.sendAndTrack(task.id, failedMessage);

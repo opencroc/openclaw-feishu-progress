@@ -234,6 +234,24 @@ export class CrocOffice {
     void this.emitTaskUpdate(task);
   }
 
+  async relayTaskProgress(taskId: string, stageKey: string, detail: string, progress: number, waitForDelivery = false): Promise<TaskRecord | undefined> {
+    const task = this.taskStore.markRunning(taskId, stageKey, detail, progress);
+    await this.emitTaskUpdate(task, waitForDelivery);
+    return task;
+  }
+
+  async relayTaskDone(taskId: string, summary: string, waitForDelivery = false): Promise<TaskRecord | undefined> {
+    const task = this.taskStore.markDone(taskId, summary);
+    await this.emitTaskUpdate(task, waitForDelivery);
+    return task;
+  }
+
+  async relayTaskFailed(taskId: string, message: string, waitForDelivery = false): Promise<TaskRecord | undefined> {
+    const task = this.taskStore.markFailed(taskId, message);
+    await this.emitTaskUpdate(task, waitForDelivery);
+    return task;
+  }
+
   getAgents(): CrocAgent[] {
     return this.agents;
   }

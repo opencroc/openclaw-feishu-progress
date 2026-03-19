@@ -27,6 +27,8 @@ export interface FeishuComplexTaskStartParams {
   rootMessageId?: string;
   receiveDetail?: string;
   understandDetail?: string;
+  autoDispatch?: boolean;
+  suppressFinalSummary?: boolean;
 }
 
 export type FeishuComplexTaskStartOutcome =
@@ -79,6 +81,7 @@ export async function startComplexFeishuChatTask(
     replyToMessageId: params.replyToMessageId,
     rootMessageId: params.rootMessageId,
     source: 'feishu',
+    suppressFinalSummary: params.suppressFinalSummary,
   });
 
   office.activateTask(task.id);
@@ -109,6 +112,7 @@ export async function startComplexFeishuChatTask(
       replyToMessageId: params.replyToMessageId,
       rootMessageId: params.rootMessageId,
       source: 'feishu',
+      suppressFinalSummary: params.suppressFinalSummary,
     },
     kind: 'chat',
     initialProgress: 15,
@@ -118,11 +122,13 @@ export async function startComplexFeishuChatTask(
 
   const dispatch = previewDispatch(params.text);
 
-  void dispatchChatTask(office, task.id, params.text).catch((error) => {
-    office.activateTask(task.id);
-    office.failTask(error instanceof Error ? error.message : String(error));
-    office.activateTask(null);
-  });
+  if (params.autoDispatch !== false) {
+    void dispatchChatTask(office, task.id, params.text).catch((error) => {
+      office.activateTask(task.id);
+      office.failTask(error instanceof Error ? error.message : String(error));
+      office.activateTask(null);
+    });
+  }
 
   return {
     ok: true,
