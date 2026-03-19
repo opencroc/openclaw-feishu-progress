@@ -186,6 +186,8 @@ describe('FeishuProgressBridge', () => {
     expect((sent[0]?.card as any).header.title.content).toContain('任务已开始');
     expect((sent[1]?.card as any).header.title.content).toContain('任务等待确认');
     expect((sent[2]?.card as any).header.title.content).toContain('任务已完成');
+    expect((sent[0]?.card as any).body.elements.some((element: any) => element.tag === 'button')).toBe(true);
+    expect((sent[2]?.card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(true);
   });
 
   it('updates the same card for progress in card-live mode', async () => {
@@ -213,6 +215,7 @@ describe('FeishuProgressBridge', () => {
     expect(update.mock.calls[0]?.[1].kind).toBe('task-progress');
     expect(update.mock.calls[0]?.[1].card).toBeDefined();
     expect((update.mock.calls[0]?.[1].card as any).header.title.content).toContain('任务进度更新');
+    expect((send.mock.calls[0]?.[0].card as any).body.elements.some((element: any) => element.tag === 'button')).toBe(true);
   });
 
   it('can send one extra completion summary after the live card is updated', async () => {
@@ -240,6 +243,7 @@ describe('FeishuProgressBridge', () => {
     expect(send.mock.calls[1]?.[0].presentation).toBe('text');
     expect(update.mock.calls[0]?.[1].kind).toBe('task-complete');
     expect(update.mock.calls[0]?.[1].card).toBeDefined();
+    expect((update.mock.calls[0]?.[1].card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(true);
   });
 
   it('sends completion update when task is done', async () => {

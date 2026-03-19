@@ -129,6 +129,11 @@ function summarizeKeywords(keywords: string[]): string | undefined {
   return keywords.slice(0, 5).join('、');
 }
 
+function formatSection(title: string, content: string | undefined): string | undefined {
+  if (!content) return undefined;
+  return `${title}\n${content}`;
+}
+
 export function buildProjectChatAnswer(question: string, snapshot: ProjectChatSnapshot): string {
   const subject = snapshot.packageName || snapshot.graphSummary?.projectName || '这个项目';
   const description = snapshot.packageDescription || snapshot.valueProp;
@@ -136,29 +141,27 @@ export function buildProjectChatAnswer(question: string, snapshot: ProjectChatSn
   const graph = snapshot.graphSummary;
   const wantsPurpose = /干啥|做什么|用途|定位|是什么|介绍/i.test(question);
 
-  const lines = [
-    description
+  const sections = [
+    formatSection('项目定位', description
       ? `${subject} 主要是：${description}`
-      : `${subject} 更像一个面向工程团队的代码扫描、测试生成和执行平台。`,
-    snapshot.valueProp && snapshot.valueProp !== description
-      ? `一句话看，它的价值是：${snapshot.valueProp}`
-      : undefined,
-    snapshot.coreFeatures.length > 0
-      ? `核心能力包括：${snapshot.coreFeatures.join('；')}`
-      : undefined,
-    graph
-      ? `从仓库结构看，它当前偏 ${graph.projectType}，大致有 ${graph.modules} 个模块、${graph.apiEndpoints} 个 API、${graph.dataModels} 个数据模型。`
-      : undefined,
-    graph && graph.frameworks.length > 0
-      ? `识别到的主要技术栈/框架：${graph.frameworks.slice(0, 5).join('、')}`
-      : undefined,
-    keywords && wantsPurpose
-      ? `关键词上它聚焦在：${keywords}`
-      : undefined,
-    wantsPurpose
-      ? '换句话说，它想解决的是“先理解项目，再自动产出测试和执行结果”，而不是只做单点代码生成。'
-      : undefined,
+      : `${subject} 更像一个面向工程团队的代码扫描、测试生成和执行平台。`),
+    formatSection('一句话价值', snapshot.valueProp && snapshot.valueProp !== description
+      ? snapshot.valueProp
+      : undefined),
+    formatSection('核心能力', snapshot.coreFeatures.length > 0
+      ? snapshot.coreFeatures.map((item, index) => `${index + 1}. ${item}`).join('\n')
+      : undefined),
+    formatSection('仓库画像', graph
+      ? `当前偏 ${graph.projectType}，大致有 ${graph.modules} 个模块、${graph.apiEndpoints} 个 API、${graph.dataModels} 个数据模型。`
+      : undefined),
+    formatSection('技术栈', graph && graph.frameworks.length > 0
+      ? graph.frameworks.slice(0, 5).join('、')
+      : undefined),
+    formatSection('关键词', keywords && wantsPurpose ? keywords : undefined),
+    formatSection('一句直白的话', wantsPurpose
+      ? '它想解决的是“先理解项目，再自动产出测试和执行结果”，而不是只做单点代码生成。'
+      : undefined),
   ].filter((line): line is string => Boolean(line));
 
-  return lines.join('\n');
+  return sections.join('\n\n');
 }

@@ -46,6 +46,7 @@ export interface FeishuOutboundMessage {
   status: TaskRecord['status'];
   stage?: string;
   detail?: string;
+  summary?: string;
   link?: string;
   decision?: TaskDecisionPrompt;
   card?: FeishuCardPayload;
@@ -152,7 +153,7 @@ function formatWaitingText(task: TaskRecord, link?: string): string {
 function formatCompleteText(task: TaskRecord, link?: string): string {
   const parts = [
     `任务已完成：${task.title}`,
-    task.summary ? `结果：${task.summary}` : undefined,
+    task.summary,
     link ? `详情：${link}` : undefined,
   ].filter(Boolean);
   return parts.join('\n');
@@ -228,10 +229,34 @@ function createTaskCard(message: FeishuOutboundMessage): FeishuCardPayload {
     });
   }
 
+  if (message.summary) {
+    elements.push({
+      tag: 'div',
+      text: {
+        tag: 'lark_md',
+        content: `**结果摘要**\n${message.summary}`,
+      },
+    });
+  }
+
   if (message.link) {
     elements.push({
-      tag: 'markdown',
-      content: `[查看任务详情](${message.link})`,
+      tag: 'button',
+      text: {
+        tag: 'plain_text',
+        content: '查看任务详情',
+      },
+      type: 'primary',
+      width: 'fill',
+      behaviors: [
+        {
+          type: 'open_url',
+          default_url: message.link,
+          pc_url: message.link,
+          ios_url: message.link,
+          android_url: message.link,
+        },
+      ],
     });
   }
 
@@ -527,6 +552,7 @@ export class FeishuProgressBridge {
           status: task.status,
           stage,
           detail: latest?.message,
+          summary: task.summary,
           link,
         };
         await this.sendAndTrack(task.id, completeMessage);

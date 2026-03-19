@@ -76,6 +76,28 @@ body {
   border: 1px solid var(--task-border);
   background: var(--task-card);
 }
+.summary-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--task-accent) 22%, var(--task-border));
+  background: linear-gradient(180deg, rgba(18, 37, 62, 0.94), rgba(9, 18, 33, 0.92));
+}
+.summary-card h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.task-summary {
+  color: var(--task-text);
+  line-height: 1.8;
+  font-size: 14px;
+  white-space: normal;
+}
+.task-summary p {
+  margin: 0 0 14px;
+}
+.task-summary p:last-child {
+  margin-bottom: 0;
+}
 .stage-card h3, .event-card h3 { margin: 0; font-size: 14px; }
 .stage-card p, .event-card p { margin: 8px 0 0; color: var(--task-dim); line-height: 1.6; font-size: 13px; }
 .stage-status { margin-top: 8px; font-size: 12px; color: var(--task-muted); text-transform: uppercase; }
@@ -185,10 +207,17 @@ export default function TasksPage() {
           <div class="task-progress" style="margin-top:14px"><span style="width:${task.progress}%"></span></div>
           <div class="task-badges">
             <span class="badge ${task.status}">progress ${task.progress}%</span>
-            ${task.summary ? `<span class="badge done">${escapeHtml(task.summary)}</span>` : ''}
             ${task.waitingFor ? `<span class="badge waiting">waiting: ${escapeHtml(task.waitingFor)}</span>` : ''}
           </div>
         </section>
+        ${task.summary ? `
+        <section>
+          <div class="summary-card">
+            <h3>结果摘要</h3>
+            <div class="task-summary">${renderMultiline(task.summary)}</div>
+          </div>
+        </section>
+        ` : ''}
         <section>
           <h2 style="margin:0 0 10px">Stages</h2>
           <div class="stage-grid">
@@ -231,6 +260,13 @@ export default function TasksPage() {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function renderMultiline(input: string): string {
+      return escapeHtml(input)
+        .split(/\n{2,}/)
+        .map((block) => `<p>${block.replace(/\n/g, '<br>')}</p>`)
+        .join('');
     }
 
     void refreshTasks();
