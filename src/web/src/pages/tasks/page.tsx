@@ -3,7 +3,7 @@ import { startTransition, useEffect, useMemo, useState, useSyncExternalStore } f
 import { getEdgeTypeLabel, getKindLabel, getStageKeyLabel, getStageLabel, getStatusLabel } from '@features/tasks/labels';
 import PlanetInterior from '@features/tasks/interior/PlanetInterior';
 import PlanetInteriorScene3D from '@features/tasks/interior/PlanetInteriorScene3D';
-import PlanetUniverse from '@features/tasks/universe/PlanetUniverse';
+import PlanetUniverse, { PLANET_UNIVERSE_VIEW_BOX, type PlanetUniverseViewport } from '@features/tasks/universe/PlanetUniverse';
 import type {
   PlanetEdge,
   PlanetInteriorData,
@@ -43,15 +43,91 @@ body {
   color: var(--task-text);
 }
 .task-page {
-  min-height: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
   padding: 24px;
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  grid-template-rows: minmax(360px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  grid-template-rows: clamp(278px, 35dvh, 340px) minmax(0, 1fr);
   grid-template-areas:
     "universe universe"
     "panel main";
+  gap: 14px;
+  max-width: 1560px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.task-detail-page {
+  min-height: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+.task-detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.task-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  gap: 16px;
+}
+.task-detail-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.task-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-detail-hero {
+  padding: 18px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(46, 107, 89, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(86, 116, 143, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(248, 242, 233, 0.95));
+}
+.task-detail-hero h1 {
+  margin: 10px 0 0;
+  font-size: 28px;
+  line-height: 1.25;
+}
+.task-detail-meta {
+  margin-top: 10px;
+  color: var(--task-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.task-detail-copy {
+  margin-top: 14px;
+  color: var(--task-text);
+  line-height: 1.8;
+  font-size: 14px;
+}
+.task-detail-copy p {
+  margin: 0;
+}
+.task-detail-main .task-main-body {
+  padding: 18px;
+}
+.task-detail-side .task-panel-body,
+.task-detail-side .task-main-body {
+  padding: 16px 18px 18px;
+}
+.task-detail-tasklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .task-shell,
 .task-universe-shell {
@@ -64,53 +140,176 @@ body {
 }
 .task-universe-shell {
   grid-area: universe;
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1.95fr) 360px;
   min-height: 0;
+  background:
+    radial-gradient(circle at left top, rgba(46, 107, 89, 0.12), transparent 34%),
+    radial-gradient(circle at 82% 22%, rgba(86, 116, 143, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(247, 240, 230, 0.92));
 }
 .task-universe-head,
 .task-panel-head,
 .task-main-head {
-  padding: 18px 20px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--task-border);
 }
 .task-universe-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  padding: 12px;
 }
 .task-universe-body {
   flex: 1;
   min-height: 0;
-  padding: 12px 16px 16px;
+  padding: 0;
+  min-width: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(100, 83, 61, 0.12);
+  background:
+    radial-gradient(circle at 16% 18%, rgba(46, 107, 89, 0.12), transparent 24%),
+    radial-gradient(circle at 80% 26%, rgba(86, 116, 143, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(253, 250, 245, 0.96), rgba(240, 232, 220, 0.84));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .task-universe-svg {
   width: 100%;
   height: 100%;
   display: block;
 }
-.task-universe-aside {
-  border-left: 1px solid var(--task-border);
-  padding: 18px;
+.task-overview-copy {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  background: linear-gradient(180deg, rgba(10, 16, 28, 0.36), rgba(10, 16, 28, 0.08));
+  gap: 8px;
 }
-.task-legend,
-.task-kpi-list,
-.task-active-list {
+.task-overview-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--task-blue);
+}
+.task-overview-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.12;
+}
+.task-overview-lede {
+  margin-top: 2px;
+  color: var(--task-dim);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 760px;
+}
+.task-overview-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.task-overview-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--task-dim);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.task-overview-pill strong {
+  color: var(--task-text);
+  font-size: 13px;
+}
+.task-overview-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.task-overview-side {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+.task-overview-side-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.task-overview-side .task-overview-copy {
+  gap: 6px;
+}
+.task-overview-side .task-overview-title {
+  font-size: 22px;
+}
+.task-overview-side .task-overview-lede {
+  max-width: none;
+}
+.task-overview-side .task-overview-actions {
+  justify-content: flex-start;
+  flex-shrink: 0;
+}
+.task-universe-aside {
+  border-left: 1px solid var(--task-border);
+  padding: 12px;
+  display: grid;
+  grid-template-rows: auto auto minmax(112px, 0.8fr) minmax(148px, 1fr);
+  gap: 10px;
+  min-height: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(247, 240, 230, 0.78));
+  overflow: hidden;
+}
+.task-legend,
+.task-active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 10px 26px rgba(84, 67, 48, 0.06);
+}
+.task-active-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+}
+.task-active-list::before {
+  content: "活跃星球";
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--task-text);
+}
+.task-legend {
+  display: none;
+}
+.task-kpi-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
 .task-legend-item,
 .task-active-item,
 .task-kpi {
-  padding: 12px 14px;
+  padding: 10px 11px;
   border-radius: 16px;
   border: 1px solid var(--task-border);
-  background: var(--task-card);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 26px rgba(84, 67, 48, 0.06);
 }
 .task-active-item {
   width: 100%;
@@ -135,20 +334,58 @@ body {
 .task-kpi .value {
   display: block;
   margin-top: 6px;
-  font-size: 24px;
+  font-size: 21px;
   font-weight: 700;
   color: var(--task-text);
+  line-height: 1.1;
 }
 .task-kpi .label,
 .task-active-item .meta {
   color: var(--task-dim);
   font-size: 12px;
 }
+.task-kpi .hint {
+  display: block;
+  margin-top: 3px;
+  color: var(--task-muted);
+  font-size: 11px;
+}
+.task-aside-card {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 10px 26px rgba(84, 67, 48, 0.06);
+}
+.task-aside-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.task-aside-card-head h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.task-aside-meta {
+  margin-top: 6px;
+  color: var(--task-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
 .task-tool-card {
   padding: 12px 14px;
   border-radius: 16px;
   border: 1px solid var(--task-border);
-  background: var(--task-card);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 26px rgba(84, 67, 48, 0.06);
+  min-height: 0;
+  overflow: auto;
+}
+.task-tool-card-title {
+  font-weight: 700;
+  margin-bottom: 10px;
 }
 .task-tool-row {
   display: flex;
@@ -225,22 +462,27 @@ body {
   flex-direction: column;
   min-height: 0;
 }
+.task-panel,
+.task-main {
+  min-height: 0;
+}
 .task-panel { grid-area: panel; }
 .task-main { grid-area: main; }
 .task-panel-body,
 .task-main-body {
-  padding: 18px 20px;
+  flex: 1 1 auto;
+  padding: 14px 16px 16px;
   overflow: auto;
   min-height: 0;
 }
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .task-item {
-  padding: 14px;
-  border-radius: 16px;
+  padding: 12px;
+  border-radius: 14px;
   border: 1px solid var(--task-border);
   background: var(--task-card);
   cursor: pointer;
@@ -253,7 +495,11 @@ body {
   background: var(--task-hover);
   border-color: color-mix(in srgb, var(--task-accent) 42%, var(--task-border));
 }
-.task-title { font-weight: 700; }
+.task-title {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.45;
+}
 .task-meta { margin-top: 6px; color: var(--task-dim); font-size: 12px; line-height: 1.5; }
 .task-progress {
   margin-top: 10px;
@@ -381,6 +627,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
 }
 .planet-hero-card,
 .planet-visual-card,
@@ -459,18 +706,20 @@ body {
 }
 .planet-interior-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
   gap: 16px;
+  align-items: start;
+  min-height: 0;
 }
 .planet-visual-stack,
 .planet-side-stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
 .planet-visual-card {
-  padding: 12px;
+  padding: 8px;
   overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(86, 116, 143, 0.08), transparent 30%),
@@ -489,14 +738,16 @@ body {
   width: 100%;
   height: auto;
   display: block;
+  max-width: 720px;
+  margin: 0 auto;
 }
 .planet-interior-scene {
   position: relative;
-  min-height: 540px;
+  min-height: 380px;
 }
 .planet-interior-canvas {
   width: 100%;
-  height: 540px;
+  height: 380px;
   display: block;
 }
 .planet-interior-pixel-layer {
@@ -605,7 +856,7 @@ body {
 }
 .planet-stage-strip {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 .planet-stage-card {
@@ -662,6 +913,10 @@ body {
 }
 .planet-summary-card .task-summary {
   padding: 14px 18px 18px;
+  max-height: 520px;
+  overflow: auto;
+  font-size: 15px;
+  line-height: 1.9;
 }
 .planet-agents-card,
 .planet-timeline-card {
@@ -673,6 +928,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 280px;
+  overflow: auto;
 }
 .planet-agent-card,
 .planet-event-item {
@@ -745,8 +1002,9 @@ body {
 }
 @media (max-width: 1180px) {
   .task-page {
+    height: auto;
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(340px, 420px) auto auto;
+    grid-template-rows: minmax(360px, 440px) auto auto;
     grid-template-areas:
       "universe"
       "panel"
@@ -756,12 +1014,38 @@ body {
     grid-template-columns: 1fr;
   }
   .task-universe-aside {
+    display: flex;
+    flex-direction: column;
     border-left: 0;
     border-top: 1px solid var(--task-border);
+    overflow: visible;
+  }
+  .task-overview-side-top {
+    flex-direction: column;
+  }
+  .task-detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 760px) {
-  .task-page { padding: 14px; }
+  .task-page {
+    padding: 14px;
+    height: auto;
+  }
+  .task-universe-aside {
+    overflow: visible;
+  }
+  .task-tool-card,
+  .task-active-list {
+    overflow: visible;
+  }
+  .task-overview-title {
+    font-size: 24px;
+  }
+  .task-kpi-list {
+    grid-template-columns: 1fr 1fr;
+  }
+  .task-detail-page { padding: 14px; }
   .stage-grid { grid-template-columns: 1fr; }
   .planet-stage-strip,
   .planet-interior-grid {
@@ -778,6 +1062,41 @@ body {
   }
 }
 `;
+
+function buildOverviewViewport(planets: PlanetOverviewItem[]): PlanetUniverseViewport | undefined {
+  if (planets.length === 0) return undefined;
+
+  const bounds = planets.reduce((acc, planet) => ({
+    minX: Math.min(acc.minX, planet.position.x - planet.radius - 22),
+    maxX: Math.max(acc.maxX, planet.position.x + planet.radius + 22),
+    minY: Math.min(acc.minY, planet.position.y - planet.radius - 28),
+    maxY: Math.max(acc.maxY, planet.position.y + planet.radius + 30),
+  }), {
+    minX: Number.POSITIVE_INFINITY,
+    maxX: Number.NEGATIVE_INFINITY,
+    minY: Number.POSITIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY,
+  });
+
+  const width = Math.max(140, bounds.maxX - bounds.minX);
+  const height = Math.max(120, bounds.maxY - bounds.minY);
+  const zoom = Math.max(
+    0.92,
+    Math.min(
+      2.25,
+      Math.min(
+        PLANET_UNIVERSE_VIEW_BOX.width / width,
+        PLANET_UNIVERSE_VIEW_BOX.height / height,
+      ) * 1.06,
+    ),
+  );
+
+  return {
+    centerX: (bounds.minX + bounds.maxX) / 2,
+    centerY: (bounds.minY + bounds.maxY) / 2,
+    zoom,
+  };
+}
 
 function formatTime(ts?: number): string {
   if (!ts) return '—';
@@ -967,6 +1286,7 @@ export default function TasksPage() {
   const [interiorViewMode, setInteriorViewMode] = useState<'3d' | '2d'>('3d');
   const pathname = useSyncExternalStore(subscribeNavigation, getCurrentAppPath, () => '/tasks');
   const selectedTaskId = parseSelectedTaskId(pathname);
+  const detailMode = Boolean(selectedTaskId);
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [planets, setPlanets] = useState<PlanetOverviewItem[]>([]);
   const [edges, setEdges] = useState<PlanetEdge[]>([]);
@@ -1152,11 +1472,25 @@ export default function TasksPage() {
     done: planets.filter((planet) => planet.status === 'done').length,
   }), [planets]);
 
+  const overviewViewport = useMemo(
+    () => buildOverviewViewport(planets),
+    [planets],
+  );
+
+  const overviewUpdatedAt = selectedTask?.updatedAt ?? tasks[0]?.updatedAt ?? null;
+
   const activePlanets = useMemo(
     () => planets
       .filter((planet) => planet.status === 'running' || planet.status === 'waiting')
       .slice(0, 4),
     [planets],
+  );
+
+  const relatedTasks = useMemo(
+    () => tasks
+      .filter((task) => task.id !== selectedTask?.id)
+      .slice(0, 6),
+    [tasks, selectedTask?.id],
   );
 
   async function handlePlanetClick(taskId: string): Promise<void> {
@@ -1320,35 +1654,210 @@ export default function TasksPage() {
     selectedTask?.status === 'running' || selectedTask?.status === 'waiting' ? agentRefreshTick : 0,
   ]);
 
+  const interiorContent = selectedTask && selectedPlanet ? (
+    interior && interiorTaskId === selectedTask.id && !interiorError ? (
+      interiorViewMode === '3d' ? (
+        <PlanetInteriorScene3D
+          planet={selectedPlanet}
+          interior={interior}
+          formatTime={formatTime}
+        />
+      ) : (
+        <PlanetInterior
+          planet={selectedPlanet}
+          interior={interior}
+          formatTime={formatTime}
+        />
+      )
+    ) : interiorLoading ? (
+      <div className="task-empty">Loading task detail...</div>
+    ) : (
+      <div className="task-empty">
+        Failed to load task detail{interiorError ? `: ${interiorError}` : '.'}
+      </div>
+    )
+  ) : (
+    <div className="task-empty">{loading ? 'Loading task...' : 'No task selected.'}</div>
+  );
+
+  const recentEvents = selectedTask ? [...selectedTask.events].slice(-8).reverse() : [];
+
+  if (detailMode) {
+    return (
+      <>
+        <style>{taskStyles}</style>
+        <div className="task-detail-page">
+          <div className="task-detail-topbar">
+            <button
+              type="button"
+              className="task-tool-btn task-detail-back"
+              onClick={() => navigate('/tasks')}
+            >
+              Back to tasks
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {selectedTask ? (
+                <>
+                  <span className={`badge ${selectedTask.status}`}>{getStatusLabel(selectedTask.status)}</span>
+                  <span className="badge">{selectedTask.progress}%</span>
+                  <span className="badge">{getKindLabel(selectedTask.kind)}</span>
+                </>
+              ) : null}
+              {interiorFallback ? <span className="task-status-badge info">Local detail</span> : null}
+            </div>
+          </div>
+
+          {selectedTask ? (
+            <>
+              <section className="task-shell task-detail-hero">
+                <div style={{ color: 'var(--task-dim)', fontSize: 12, letterSpacing: '0.12em', fontWeight: 700 }}>
+                  TASK DETAIL
+                </div>
+                <h1>{selectedTask.title}</h1>
+                <div className="task-detail-meta">
+                  {getKindLabel(selectedTask.kind)} · {getStatusLabel(selectedTask.status)} · Created {formatTime(selectedTask.createdAt)}
+                  {selectedTask.currentStageKey ? ` · Current stage: ${getStageKeyLabel(selectedTask.currentStageKey)}` : ''}
+                  {selectedTask.completedAt ? ` · Completed ${formatTime(selectedTask.completedAt)}` : ''}
+                </div>
+                <div className="task-progress" style={{ marginTop: 14 }}>
+                  <span style={{ width: `${selectedTask.progress}%` }} />
+                </div>
+                <div className="task-badges" style={{ marginTop: 12 }}>
+                  <span className={`badge ${selectedTask.status}`}>progress {selectedTask.progress}%</span>
+                  {selectedTask.waitingFor ? <span className="badge waiting">waiting {selectedTask.waitingFor}</span> : null}
+                  <span className="badge">{selectedTask.id}</span>
+                </div>
+                {(selectedTask.summary || selectedTask.sourceText || recentEvents[0]?.message) ? (
+                  <div className="task-detail-copy">
+                    <p>{selectedTask.summary || selectedTask.sourceText || recentEvents[0]?.message}</p>
+                  </div>
+                ) : null}
+              </section>
+
+              <div className="task-detail-grid">
+                <main className="task-shell task-detail-main">
+                  <div className="task-main-head">
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                      <div>
+                        <h1 style={{ margin: 0, fontSize: 18 }}>Task detail</h1>
+                        <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
+                          This page is optimized for the Feishu progress card and focuses on one task.
+                        </div>
+                      </div>
+                      <div className="task-view-switch">
+                        <button
+                          type="button"
+                          className={`task-tool-btn ${interiorViewMode === '3d' ? 'active' : ''}`}
+                          onClick={() => setInteriorViewMode('3d')}
+                        >
+                          Workspace
+                        </button>
+                        <button
+                          type="button"
+                          className={`task-tool-btn ${interiorViewMode === '2d' ? 'active' : ''}`}
+                          onClick={() => setInteriorViewMode('2d')}
+                        >
+                          2D Map
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="task-main-body">
+                    {interiorContent}
+                  </div>
+                </main>
+
+                <aside className="task-detail-side">
+                  <section className="task-shell">
+                    <div className="task-panel-head">
+                      <h1 style={{ margin: 0, fontSize: 16 }}>Stage progress</h1>
+                    </div>
+                    <div className="task-panel-body">
+                      <div className="stage-grid">
+                        {selectedTask.stages.map((stage) => (
+                          <div key={stage.key} className="stage-card">
+                            <h3>{getStageLabel(stage.label, stage.key)}</h3>
+                            <div className={`stage-status ${stage.status}`}>{stage.status}</div>
+                            <p>{stage.detail || 'No stage detail.'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="task-shell">
+                    <div className="task-panel-head">
+                      <h1 style={{ margin: 0, fontSize: 16 }}>Recent events</h1>
+                    </div>
+                    <div className="task-panel-body">
+                      {recentEvents.length > 0 ? (
+                        <div className="event-feed">
+                          {recentEvents.map((event, index) => (
+                            <div key={`${event.time}-${index}`} className="event-card">
+                              <h3>{event.message}</h3>
+                              <div className="time">
+                                {formatTime(event.time)} · {event.type}{typeof event.progress === 'number' ? ` · ${event.progress}%` : ''}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="task-empty">No events yet.</div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="task-shell">
+                    <div className="task-panel-head">
+                      <h1 style={{ margin: 0, fontSize: 16 }}>Related tasks</h1>
+                    </div>
+                    <div className="task-panel-body">
+                      {relatedTasks.length > 0 ? (
+                        <div className="task-detail-tasklist">
+                          {relatedTasks.map((task) => (
+                            <button
+                              key={task.id}
+                              type="button"
+                              className="task-item"
+                              onClick={() => navigate(`/tasks/${task.id}`)}
+                            >
+                              <div className="task-title">{task.title}</div>
+                              <div className="task-meta">
+                                {getKindLabel(task.kind)} · {getStatusLabel(task.status)} · {task.progress}%
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="task-empty">No related tasks.</div>
+                      )}
+                    </div>
+                  </section>
+                </aside>
+              </div>
+            </>
+          ) : (
+            <section className="task-shell task-detail-hero">
+              <h1 style={{ margin: 0, fontSize: 24 }}>Task not found</h1>
+              <div className="task-detail-meta">
+                {loading ? 'Trying to load task detail...' : 'This task link may be expired, or the task id is invalid.'}
+              </div>
+            </section>
+          )}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <style>{taskStyles}</style>
       <div className="task-page">
         <section className="task-universe-shell">
           <div className="task-universe-main">
-            <div className="task-universe-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: 18 }}>OpenCroc 星球宇宙</h1>
-                <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
-                  每个复杂任务都会沉淀成一颗星球。执行中的星球会发光，待确认的星球会轻微闪动，已完成的结果会留在这里形成长期记忆。
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {planetApiFallback ? (
-                  <span className="task-status-badge warn">仅任务接口</span>
-                ) : null}
-                <button
-                  type="button"
-                  className="task-tool-btn"
-                  onClick={() => navigate(selectedTask ? `/universe?focus=${encodeURIComponent(selectedTask.id)}` : '/universe')}
-                >
-                  全屏查看
-                </button>
-              </div>
-            </div>
             <div className="task-universe-body">
               {loading && planets.length === 0 ? (
-                <div className="task-empty">正在加载星球宇宙…</div>
+                <div className="task-empty">正在加载任务星图…</div>
               ) : (
                 <PlanetUniverse
                   planets={planets}
@@ -1356,6 +1865,7 @@ export default function TasksPage() {
                   selectedId={selectedTask?.id ?? null}
                   selectedEdgeKey={selectedEdgeKey}
                   linkSourceId={linkSourceId}
+                  viewport={overviewViewport}
                   onPlanetClick={(taskId) => { void handlePlanetClick(taskId); }}
                   onEdgeClick={(edge) => setSelectedEdgeKey(edgeKey(edge))}
                 />
@@ -1363,22 +1873,58 @@ export default function TasksPage() {
             </div>
           </div>
           <aside className="task-universe-aside">
+            <div className="task-aside-card task-overview-side">
+              <div className="task-overview-side-top">
+                <div className="task-overview-copy">
+                  <span className="task-overview-kicker">Task Overview</span>
+                  <h1 className="task-overview-title">OpenCroc 任务星图</h1>
+                </div>
+                <div className="task-overview-actions">
+                  <span className={`task-status-badge ${planetApiFallback ? 'warn' : 'info'}`}>
+                    {planetApiFallback ? '仅任务接口' : '实时星图'}
+                  </span>
+                  <button
+                    type="button"
+                    className="task-tool-btn"
+                    onClick={() => navigate(selectedTask ? `/universe?focus=${encodeURIComponent(selectedTask.id)}` : '/universe')}
+                  >
+                    全屏查看
+                  </button>
+                </div>
+              </div>
+              <div className="task-overview-lede">
+                把扫描、流水线和飞书复杂任务统一放进一张持续刷新的星图里。发光的是执行中任务，闪烁的是待确认节点，点进任意星球就能查看完整进度卡片。
+              </div>
+              <div className="task-overview-pills">
+                <span className="task-overview-pill"><strong>{stats.total}</strong> 个任务已装载</span>
+                <span className="task-overview-pill"><strong>{stats.running + stats.waiting}</strong> 个任务正在活跃推进</span>
+                <span className="task-overview-pill"><span className="task-dot" style={{ background: '#ef9f27', marginRight: 0 }} /> 执行中会发光</span>
+                <span className="task-overview-pill"><span className="task-dot" style={{ background: '#8b82f4', marginRight: 0 }} /> 待确认会闪烁</span>
+                {overviewUpdatedAt ? (
+                  <span className="task-overview-pill">最近更新 {formatTime(overviewUpdatedAt)}</span>
+                ) : null}
+              </div>
+            </div>
             <div className="task-kpi-list">
               <div className="task-kpi">
-                <span className="label">星球总数</span>
+                <span className="label">任务总数</span>
                 <span className="value">{stats.total}</span>
+                <span className="hint">当前已进入星图的全部任务</span>
               </div>
               <div className="task-kpi">
                 <span className="label">执行中</span>
                 <span className="value" style={{ color: 'var(--task-orange)' }}>{stats.running}</span>
+                <span className="hint">仍在自动推进的任务</span>
               </div>
               <div className="task-kpi">
                 <span className="label">待确认</span>
                 <span className="value" style={{ color: 'var(--task-purple)' }}>{stats.waiting}</span>
+                <span className="hint">需要人工接力的节点</span>
               </div>
               <div className="task-kpi">
                 <span className="label">已完成</span>
                 <span className="value" style={{ color: 'var(--task-accent)' }}>{stats.done}</span>
+                <span className="hint">已经沉淀为历史记录</span>
               </div>
             </div>
 
@@ -1390,7 +1936,7 @@ export default function TasksPage() {
             </div>
 
             <div className="task-tool-card">
-              <div style={{ fontWeight: 700, marginBottom: 10 }}>星球关系</div>
+              <div className="task-tool-card-title">星球关系</div>
               {planetApiFallback ? (
                 <div className="task-edge-reason">
                   当前服务尚未部署 Planet API。关系编辑已禁用，待 `/api/planets` 上线后恢复。

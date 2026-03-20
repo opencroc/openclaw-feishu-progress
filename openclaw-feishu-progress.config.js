@@ -1,6 +1,4 @@
-import { defineConfig } from './dist/index.js';
-
-export default defineConfig({
+export default {
   backendRoot: '.',
   feishu: {
     enabled: true,
@@ -15,4 +13,4 @@ export default defineConfig({
       ?? 'http://127.0.0.1:8765',
     progressThrottlePercent: 10,
   },
-});
+};

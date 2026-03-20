@@ -79,6 +79,15 @@ export function registerFeishuIngressRoutes(app: FastifyInstance, office: CrocOf
   app.post<{ Body: FeishuChallengeBody | FeishuEventBody }>('/api/feishu/webhook', async (req, reply) => {
     const body = req.body as FeishuChallengeBody | FeishuEventBody;
 
+    console.log('[feishu:webhook]', JSON.stringify({
+      type: body?.type,
+      eventType: 'header' in body ? body.header?.event_type : undefined,
+      eventId: 'header' in body ? body.header?.event_id : undefined,
+      chatId: 'event' in body ? body.event?.message?.chat_id : undefined,
+      messageId: 'event' in body ? body.event?.message?.message_id : undefined,
+      senderOpenId: 'event' in body ? body.event?.sender?.sender_id?.open_id : undefined,
+    }));
+
     if (body?.type === 'url_verification' && 'challenge' in body) {
       return { challenge: body.challenge };
     }

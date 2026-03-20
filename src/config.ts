@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import type { OpenCrocConfig, ResolvedConfig, BackendAdapter, LlmProvider } from './types.js';
 import { createSequelizeAdapter } from './adapters/sequelize-adapter.js';
 import { createLlmProvider } from './adapters/llm-provider.js';
+import { loadEnvFiles } from './env/load-env.js';
 
 /**
  * Define an OpenCroc configuration with type checking.
@@ -30,6 +31,8 @@ export function defineConfig(config: OpenCrocConfig): OpenCrocConfig {
  * Falls back to default config if no file found.
  */
 export async function loadConfig(searchFrom?: string): Promise<OpenCrocConfig> {
+  loadEnvFiles(searchFrom ?? process.cwd());
+
   const { cosmiconfig } = await import('cosmiconfig');
   const explorer = cosmiconfig('opencroc', {
     searchPlaces: [

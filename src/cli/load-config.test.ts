@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect } from 'vitest';
 import { loadConfig } from './load-config.js';
 import { join } from 'node:path';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -13,6 +13,10 @@ function setup(filename: string, content: string): void {
 function cleanup(): void {
   rmSync(TMP, { recursive: true, force: true });
 }
+
+afterEach(() => {
+  delete process.env.TEST_FEISHU_APP_ID;
+});
 
 describe('loadConfig', () => {
   it('loads opencroc.config.json', async () => {
@@ -29,7 +33,7 @@ describe('loadConfig', () => {
   it('throws when no config is found', async () => {
     mkdirSync(TMP, { recursive: true });
     try {
-      await expect(loadConfig(TMP)).rejects.toThrow('No opencroc config found');
+      await expect(loadConfig(TMP)).rejects.toThrow('No project config found');
     } finally {
       cleanup();
     }
@@ -39,6 +43,25 @@ describe('loadConfig', () => {
     setup('opencroc.config.json', JSON.stringify({ adapter: 'sequelize' }));
     try {
       await expect(loadConfig(TMP)).rejects.toThrow('"backendRoot" is required');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('loads environment variables from .env before reading config', async () => {
+    setup('.env', 'TEST_FEISHU_APP_ID=env-app-id');
+    setup('openclaw-feishu-progress.config.js', `
+      export default {
+        backendRoot: '.',
+        feishu: {
+          appId: process.env.TEST_FEISHU_APP_ID,
+        },
+      };
+    `);
+
+    try {
+      const { config } = await loadConfig(TMP);
+      expect(config.feishu?.appId).toBe('env-app-id');
     } finally {
       cleanup();
     }

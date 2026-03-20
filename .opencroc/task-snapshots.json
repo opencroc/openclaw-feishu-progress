@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "task_mmyjlvs0_lhml5s",
+      "kind": "scan",
+      "title": "Scan project and build knowledge graph",
+      "status": "done",
+      "progress": 100,
+      "currentStageKey": "report",
+      "stages": [
+        {
+          "key": "receive",
+          "label": "Receive task",
+          "status": "done",
+          "detail": "Scan task accepted",
+          "startedAt": 1773989605157,
+          "completedAt": 1773989605162
+        },
+        {
+          "key": "scan",
+          "label": "Scan project structure",
+          "status": "done",
+          "detail": "Discovered 1145 nodes and 1680 edges",
+          "startedAt": 1773989605167,
+          "completedAt": 1773989605404
+        },
+        {
+          "key": "graph",
+          "label": "Build knowledge graph",
+          "status": "done",
+          "detail": "Knowledge graph refreshed",
+          "startedAt": 1773989605409,
+          "completedAt": 1773989605415
+        },
+        {
+          "key": "report",
+          "label": "Summarize result",
+          "status": "done",
+          "detail": "Scan complete: 1145 nodes, 1680 edges (273ms)",
+          "startedAt": 1773989605420,
+          "completedAt": 1773989605428
+        }
+      ],
+      "summary": "Scan complete: 1145 nodes, 1680 edges (273ms)",
+      "createdAt": 1773989605152,
+      "updatedAt": 1773989605433,
+      "completedAt": 1773989605433,
+      "events": [
+        {
+          "type": "created",
+          "message": "Task created: Scan project and build knowledge graph",
+          "time": 1773989605152
+        },
+        {
+          "type": "progress",
+          "message": "Task accepted and queued for scan",
+          "progress": 5,
+          "stageKey": "receive",
+          "time": 1773989605157
+        },
+        {
+          "type": "progress",
+          "message": "Scan task accepted",
+          "progress": 10,
+          "stageKey": "receive",
+          "time": 1773989605162
+        },
+        {
+          "type": "progress",
+          "message": "Scanning project files and module relationships",
+          "progress": 20,
+          "stageKey": "scan",
+          "time": 1773989605167
+        },
+        {
+          "type": "log",
+          "message": "🔍 Parser croc is scanning the project...",
+          "progress": 20,
+          "stageKey": "scan",
+          "level": "info",
+          "time": 1773989605171
+        },
+        {
+          "type": "progress",
+          "message": "Discovered 1145 nodes and 1680 edges",
+          "progress": 65,
+          "stageKey": "scan",
+          "time": 1773989605404
+        },
+        {
+          "type": "progress",
+          "message": "Building graph view and refreshing cache",
+          "progress": 75,
+          "stageKey": "graph",
+          "time": 1773989605409
+        },
+        {
+          "type": "progress",
+          "message": "Knowledge graph refreshed",
+          "progress": 90,
+          "stageKey": "graph",
+          "time": 1773989605415
+        },
+        {
+          "type": "progress",
+          "message": "Summarizing scan results",
+          "progress": 95,
+          "stageKey": "report",
+          "time": 1773989605420
+        },
+        {
+          "type": "log",
+          "message": "✅ Scan complete: 1145 nodes, 1680 edges (273ms)",
+          "progress": 95,
+          "stageKey": "report",
+          "level": "info",
+          "time": 1773989605425
+        },
+        {
+          "type": "progress",
+          "message": "Scan complete: 1145 nodes, 1680 edges (273ms)",
+          "progress": 100,
+          "stageKey": "report",
+          "time": 1773989605428
+        },
+        {
+          "type": "done",
+          "message": "Scan complete: 1145 nodes, 1680 edges (273ms)",
+          "progress": 100,
+          "stageKey": "report",
+          "time": 1773989605433
+        }
+      ]
+    },
+    {
+      "id": "task_mmyjlvrj_bc2981",
+      "kind": "scan",
+      "title": "Scan project and build knowledge graph",
+      "status": "running",
+      "progress": 2,
+      "currentStageKey": "receive",
+      "stages": [
+        {
+          "key": "receive",
+          "label": "Receive task",
+          "status": "running",
+          "detail": "Task accepted from API",
+          "startedAt": 1773989605148
+        },
+        {
+          "key": "scan",
+          "label": "Scan project structure",
+          "status": "pending"
+        },
+        {
+          "key": "graph",
+          "label": "Build knowledge graph",
+          "status": "pending"
+        },
+        {
+          "key": "report",
+          "label": "Summarize result",
+          "status": "pending"
+        }
+      ],
+      "createdAt": 1773989605135,
+      "updatedAt": 1773989605148,
+      "events": [
+        {
+          "type": "created",
+          "message": "Task created: Scan project and build knowledge graph",
+          "time": 1773989605135
+        },
+        {
+          "type": "progress",
+          "message": "Task accepted from API",
+          "progress": 2,
+          "stageKey": "receive",
+          "time": 1773989605148
+        }
+      ]
+    },
+    {
+      "id": "task_mmyimhoz_5gzhe7",
+      "kind": "scan",
+      "title": "Scan project and build knowledge graph",
+      "status": "done",
+      "progress": 100,
+      "currentStageKey": "report",
+      "stages": [
+        {
+          "key": "receive",
+          "label": "Receive task",
+          "status": "done",
+          "detail": "Scan task accepted",
+          "startedAt": 1773987953942,
+          "completedAt": 1773987953946
+        },
+        {
+          "key": "scan",
+          "label": "Scan project structure",
+          "status": "done",
+          "detail": "Discovered 0 nodes and 0 edges",
+          "startedAt": 1773987953950,
+          "completedAt": 1773987954006
+        },
+        {
+          "key": "graph",
+          "label": "Build knowledge graph",
+          "status": "done",
+          "detail": "Knowledge graph refreshed",
+          "startedAt": 1773987954010,
+          "completedAt": 1773987954015
+        },
+        {
+          "key": "report",
+          "label": "Summarize result",
+          "status": "done",
+          "detail": "Scan complete: 0 nodes, 0 edges (84ms)",
+          "startedAt": 1773987954018,
+          "completedAt": 1773987954027
+        }
+      ],
+      "summary": "Scan complete: 0 nodes, 0 edges (84ms)",
+      "createdAt": 1773987953939,
+      "updatedAt": 1773987954031,
+      "completedAt": 1773987954031,
+      "events": [
+        {
+          "type": "created",
+          "message": "Task created: Scan project and build knowledge graph",
+          "time": 1773987953939
+        },
+        {
+          "type": "progress",
+          "message": "Task accepted and queued for scan",
+          "progress": 5,
+          "stageKey": "receive",
+          "time": 1773987953942
+        },
+        {
+          "type": "progress",
+          "message": "Scan task accepted",
+          "progress": 10,
+          "stageKey": "receive",
+          "time": 1773987953946
+        },
+        {
+          "type": "progress",
+          "message": "Scanning project files and module relationships",
+          "progress": 20,
+          "stageKey": "scan",
+          "time": 1773987953950
+        },
+        {
+          "type": "log",
+          "message": "🔍 Parser croc is scanning the project...",
+          "progress": 20,
+          "stageKey": "scan",
+          "level": "info",
+          "time": 1773987953954
+        },
+        {
+          "type": "progress",
+          "message": "Discovered 0 nodes and 0 edges",
+          "progress": 65,
+          "stageKey": "scan",
+          "time": 1773987954006
+        },
+        {
+          "type": "progress",
+          "message": "Building graph view and refreshing cache",
+          "progress": 75,
+          "stageKey": "graph",
+          "time": 1773987954010
+        },
+        {
+          "type": "progress",
+          "message": "Knowledge graph refreshed",
+          "progress": 90,
+          "stageKey": "graph",
+          "time": 1773987954015
+        },
+        {
+          "type": "progress",
+          "message": "Summarizing scan results",
+          "progress": 95,
+          "stageKey": "report",
+          "time": 1773987954018
+        },
+        {
+          "type": "log",
+          "message": "✅ Scan complete: 0 nodes, 0 edges (84ms)",
+          "progress": 95,
+          "stageKey": "report",
+          "level": "info",
+          "time": 1773987954023
+        },
+        {
+          "type": "progress",
+          "message": "Scan complete: 0 nodes, 0 edges (84ms)",
+          "progress": 100,
+          "stageKey": "report",
+          "time": 1773987954027
+        },
+        {
+          "type": "done",
+          "message": "Scan complete: 0 nodes, 0 edges (84ms)",
+          "progress": 100,
+          "stageKey": "report",
+          "time": 1773987954031
+        }
+      ]
+    },
+    {
+      "id": "task_mmyimhor_34lg4k",
+      "kind": "scan",
+      "title": "Scan project and build knowledge graph",
+      "status": "running",
+      "progress": 2,
+      "currentStageKey": "receive",
+      "stages": [
+        {
+          "key": "receive",
+          "label": "Receive task",
+          "status": "running",
+          "detail": "Task accepted from API",
+          "startedAt": 1773987953935
+        },
+        {
+          "key": "scan",
+          "label": "Scan project structure",
+          "status": "pending"
+        },
+        {
+          "key": "graph",
+          "label": "Build knowledge graph",
+          "status": "pending"
+        },
+        {
+          "key": "report",
+          "label": "Summarize result",
+          "status": "pending"
+        }
+      ],
+      "createdAt": 1773987953931,
+      "updatedAt": 1773987953935,
+      "events": [
+        {
+          "type": "created",
+          "message": "Task created: Scan project and build knowledge graph",
+          "time": 1773987953931
+        },
+        {
+          "type": "progress",
+          "message": "Task accepted from API",
+          "progress": 2,
+          "stageKey": "receive",
+          "time": 1773987953935
+        }
+      ]
+    }
+  ]
+}

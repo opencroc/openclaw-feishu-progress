@@ -29,6 +29,38 @@ export default function AppRouter() {
   const RouteComponent = route.component;
 
   useEffect(() => {
+    if (pathname !== '/') {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function redirectToLatestTask(): Promise<void> {
+      try {
+        const response = await fetch('/api/tasks?limit=1');
+        if (!response.ok) {
+          throw new Error(`${response.status} ${response.statusText}`);
+        }
+
+        const payload = await response.json() as { tasks?: Array<{ id?: string | null }> };
+        if (cancelled) return;
+
+        const latestTaskId = payload.tasks?.[0]?.id;
+        navigate(latestTaskId ? `/tasks/${latestTaskId}` : '/tasks', { replace: true });
+      } catch {
+        if (cancelled) return;
+        navigate('/tasks', { replace: true });
+      }
+    }
+
+    void redirectToLatestTask();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
     document.title = route.title;
 
     const routeMatchesPath = route.path === '/'
@@ -39,6 +71,10 @@ export default function AppRouter() {
       navigate(route.path, { replace: true });
     }
   }, [pathname, route.path, route.title]);
+
+  if (pathname === '/') {
+    return <RouterFallback />;
+  }
 
   return (
     <Suspense fallback={<RouterFallback />}>

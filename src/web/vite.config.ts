@@ -1,13 +1,19 @@
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
 const webRoot = __dirname;
 const appRoot = resolve(__dirname, 'src');
+export default defineConfig(({ command }) => ({
+  ...(function () {
+    const env = loadEnv('', process.cwd(), '');
+    const devApiTarget = env.OPENCROC_DEV_API_TARGET
+      || env.OPENCLAW_FEISHU_PROGRESS_BASE_TASK_URL
+      || 'http://127.0.0.1:8765';
 
-export default defineConfig({
+    return {
   root: webRoot,
-  base: '/dist/',
+  base: command === 'serve' ? '/' : '/dist/',
   publicDir: resolve(webRoot, 'public'),
   plugins: [react()],
   resolve: {
@@ -23,6 +29,17 @@ export default defineConfig({
   server: {
     host: 'localhost',
     port: 5173,
+    proxy: {
+      '/api': {
+        target: devApiTarget,
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: devApiTarget,
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
   build: {
     outDir: resolve(__dirname, 'dist'),
@@ -90,4 +107,6 @@ export default defineConfig({
       },
     },
   },
-});
+    };
+  })(),
+}));

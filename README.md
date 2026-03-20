@@ -52,18 +52,39 @@ npm install
 复制或编辑本地运行配置：
 
 ```bash
-cp opencroc.config.js opencroc.config.local.js
+cp .env.example .env
 ```
 
-### 3) 先做一次 dry-run
+然后填写 `.env` 中的飞书参数和访问地址。
+
+### 3) 先确认配置
 
 先确认飞书配置和回传地址：
 
 ```bash
-cat opencroc.config.js
+cat .env
 ```
 
 ### 4) 启动 Studio
+
+开发态直启：
+
+```bash
+npm run serve:dev -- --host 0.0.0.0 --port 8765 --no-open
+```
+
+前后端分离开发（前端热更新）：
+
+```bash
+npm run dev
+```
+
+这会同时启动：
+
+- 前端 Vite HMR：`http://localhost:5173`
+- 后端 API / WebSocket：`http://127.0.0.1:8765`
+
+生产态构建后启动：
 
 ```bash
 npm run build
@@ -116,6 +137,20 @@ export default defineConfig({
 ```
 
 启动服务：
+
+开发态直启：
+
+```bash
+npm run serve:dev -- --host 0.0.0.0 --port 8765 --no-open
+```
+
+前端热更新开发：
+
+```bash
+npm run dev
+```
+
+或者先构建再启动：
 
 ```bash
 node dist/cli/index.js serve --host 0.0.0.0 --port 8765 --no-open

@@ -25,10 +25,14 @@ export interface CrocAgent {
 export interface KnowledgeGraphNode {
   id: string;
   label: string;
-  type: 'model' | 'controller' | 'api' | 'dto' | 'module';
+  type: string;
   status: 'idle' | 'testing' | 'passed' | 'failed';
   fields?: string[];
   module?: string;
+  filePath?: string;
+  line?: number;
+  language?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface KnowledgeGraphEdge {
@@ -1052,6 +1056,51 @@ export class CrocOffice {
             edges.push({ source: moduleNodeId, target: n.id, relation: 'contains' });
           }
         }
+      }
+
+      if (nodes.length === 0) {
+        this.updateAgent('parser-croc', { progress: 88, currentTask: 'No model/controller folders found, using universal scan...' });
+
+        const { scanProject } = await import('../scanner/project-scanner.js');
+        const { buildKnowledgeGraph: buildUniversalGraph } = await import('../graph/index.js');
+
+        const scanResult = await scanProject({
+          rootDir: backendRoot,
+          onProgress: (phase, percent, detail) => {
+            const nextProgress = Math.min(98, 88 + Math.round(percent / 10));
+            this.updateAgent('parser-croc', {
+              progress: nextProgress,
+              currentTask: detail || `Universal scan: ${phase}`,
+            });
+          },
+        });
+
+        const universalGraph = buildUniversalGraph(scanResult, {
+          projectName: this.config.backendRoot.split(/[\\/]/).pop() || 'project',
+          source: 'local',
+          rootPath: backendRoot,
+        });
+
+        nodes.push(...universalGraph.nodes.map((node) => ({
+          id: node.id,
+          label: node.label,
+          type: node.type,
+          status: 'idle' as const,
+          fields: Array.isArray(node.metadata?.fields)
+            ? node.metadata.fields.filter((value): value is string => typeof value === 'string')
+            : undefined,
+          module: node.module,
+          filePath: node.filePath,
+          line: node.line,
+          language: node.language,
+          metadata: node.metadata,
+        })));
+
+        edges.push(...universalGraph.edges.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          relation: edge.relation,
+        })));
       }
 
       this.cachedGraph = { nodes, edges };

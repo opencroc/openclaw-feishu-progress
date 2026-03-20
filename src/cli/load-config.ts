@@ -1,5 +1,6 @@
 import { cosmiconfig } from 'cosmiconfig';
 import type { OpenCrocConfig } from '../types.js';
+import { loadEnvFiles } from '../env/load-env.js';
 
 const MODULE_NAME = 'opencroc';
 
@@ -21,6 +22,8 @@ export interface LoadConfigResult {
 }
 
 export async function loadConfig(cwd?: string): Promise<LoadConfigResult> {
+  loadEnvFiles(cwd ?? process.cwd());
+
   const explorer = cosmiconfig(MODULE_NAME, {
     searchPlaces: SEARCH_PLACES,
     ...(cwd ? { stopDir: cwd } : {}),
