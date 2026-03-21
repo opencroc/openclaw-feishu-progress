@@ -220,14 +220,16 @@ OpenClaw Feishu Progress 当前可以理解成 5 层：
 
 ## Roadmap
 
-- 当前：OpenClaw 转发、飞书 ACK、阶段进度、analysis 完成态、本地 smoke 与 systemd 部署已可用
-- 下一步：补强飞书卡片交互、等待态决策流、任务摘要质量和服务监控
-- 后续：抽离更完整的任务执行器、更多消息渠道、更多可观测性能力
+- 当前：OpenClaw 转发、飞书 ACK、阶段进度、analysis 完成态、本地 smoke 与 Studio UI 已可用
+- 下一步：飞书卡片交互与等待态决策流、出站投递稳态、可观测性与生产化部署
+- 同期：OpenCroc 的 scan/graph + pipeline（生成/执行/自愈/报告）持续补强，确保任务“真的跑完并可交付”
+- 详细 Sprint 计划与 DoD：见 [docs/roadmap.md](docs/roadmap.md)
 
 ## 更多文档
 
 - [架构说明](docs/architecture.md)
 - [配置参考](docs/configuration.md)
+- [Roadmap（Sprint 计划）](docs/roadmap.md)
 - [后端埋点指南](docs/backend-instrumentation.md)
 - [AI Provider 配置](docs/ai-providers.md)
 - [自愈机制说明](docs/self-healing.md)
