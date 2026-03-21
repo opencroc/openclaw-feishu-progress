@@ -7,7 +7,8 @@ const program = new Command();
 program
   .name('opencroc')
   .description('AI-native E2E testing framework')
-  .version('1.0.0');
+  // Keep CLI version aligned with package.json
+  .version((await import('../../package.json', { assert: { type: 'json' } })).default.version);
 
 program
   .command('init')
