@@ -1,6 +1,14 @@
 import { startTransition, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
-import { getEdgeTypeLabel, getKindLabel, getStageKeyLabel, getStageLabel, getStatusLabel } from '@features/tasks/labels';
+import {
+  getAgentStatusLabel,
+  getEdgeTypeLabel,
+  getKindLabel,
+  getRoleLabel,
+  getStageKeyLabel,
+  getStageLabel,
+  getStatusLabel,
+} from '@features/tasks/labels';
 import PlanetInterior from '@features/tasks/interior/PlanetInterior';
 import PlanetInteriorScene3D from '@features/tasks/interior/PlanetInteriorScene3D';
 import PlanetUniverse, { PLANET_UNIVERSE_VIEW_BOX, type PlanetUniverseViewport } from '@features/tasks/universe/PlanetUniverse';
@@ -124,11 +132,46 @@ body {
 .task-detail-side .task-main-body {
   padding: 16px 18px 18px;
 }
-.task-detail-tasklist {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+ .task-detail-tasklist {
+	  display: flex;
+	  flex-direction: column;
+	  gap: 10px;
+	}
+	.task-agent-list {
+	  display: flex;
+	  flex-direction: column;
+	  gap: 10px;
+	}
+	.task-agent-card {
+	  padding: 12px;
+	  border-radius: 14px;
+	  border: 1px solid var(--task-border);
+	  background: var(--task-card);
+	}
+	.task-agent-head {
+	  display: flex;
+	  align-items: baseline;
+	  justify-content: space-between;
+	  gap: 10px;
+	  flex-wrap: wrap;
+	}
+	.task-agent-name {
+	  font-weight: 800;
+	  font-size: 14px;
+	  line-height: 1.4;
+	}
+	.task-agent-meta {
+	  margin-top: 6px;
+	  color: var(--task-dim);
+	  font-size: 12px;
+	  line-height: 1.5;
+	}
+	.task-agent-hint {
+	  margin-top: 8px;
+	  color: var(--task-text);
+	  font-size: 13px;
+	  line-height: 1.6;
+	}
 .task-shell,
 .task-universe-shell {
   border: 1px solid var(--task-border);
@@ -1168,6 +1211,47 @@ function edgeKey(edge: Pick<PlanetEdge, 'fromPlanetId' | 'toPlanetId'>): string 
   return `${edge.fromPlanetId}::${edge.toPlanetId}`;
 }
 
+function buildTopicAdjacency(edges: PlanetEdge[]): Map<string, Set<string>> {
+  const graph = new Map<string, Set<string>>();
+  for (const edge of edges) {
+    const left = graph.get(edge.fromPlanetId) ?? new Set<string>();
+    left.add(edge.toPlanetId);
+    graph.set(edge.fromPlanetId, left);
+
+    const right = graph.get(edge.toPlanetId) ?? new Set<string>();
+    right.add(edge.fromPlanetId);
+    graph.set(edge.toPlanetId, right);
+  }
+  return graph;
+}
+
+function collectConnectedTopicIds(startId: string, edges: PlanetEdge[], maxHops: number): string[] {
+  if (!startId) return [];
+  if (edges.length === 0) return [];
+
+  const graph = buildTopicAdjacency(edges);
+  const visited = new Set<string>([startId]);
+  let frontier: string[] = [startId];
+
+  for (let hop = 0; hop < maxHops; hop += 1) {
+    const next: string[] = [];
+    for (const current of frontier) {
+      const neighbors = graph.get(current);
+      if (!neighbors) continue;
+      for (const neighbor of neighbors) {
+        if (visited.has(neighbor)) continue;
+        visited.add(neighbor);
+        next.push(neighbor);
+      }
+    }
+    frontier = next;
+    if (frontier.length === 0) break;
+  }
+
+  visited.delete(startId);
+  return [...visited];
+}
+
 function getPlanetLabel(planets: PlanetOverviewItem[], planetId: string): string {
   return planets.find((planet) => planet.id === planetId)?.title ?? planetId;
 }
@@ -1486,12 +1570,47 @@ export default function TasksPage() {
     [planets],
   );
 
-  const relatedTasks = useMemo(
-    () => tasks
-      .filter((task) => task.id !== selectedTask?.id)
-      .slice(0, 6),
-    [tasks, selectedTask?.id],
-  );
+  const topicTasks = useMemo(() => {
+    if (!selectedTask) return [] as PlanetOverviewItem[];
+    if (planetApiFallback || edges.length === 0) {
+      return tasks
+        .filter((task) => task.id !== selectedTask.id)
+        .slice(0, 6)
+        .map((task, index) => fallbackPlanetFromTask(task, index));
+    }
+
+    const connectedIds = collectConnectedTopicIds(selectedTask.id, edges, 2);
+    if (connectedIds.length === 0) return [] as PlanetOverviewItem[];
+
+    const byId = new Map(planets.map((planet) => [planet.id, planet]));
+    const collected = connectedIds
+      .map((id) => byId.get(id))
+      .filter((item): item is PlanetOverviewItem => Boolean(item));
+
+    return collected
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+      .slice(0, 8);
+  }, [selectedTask?.id, planetApiFallback, edges, planets, tasks]);
+
+  const interiorAgents = useMemo(() => {
+    if (!selectedTask) return [];
+    if (!interior || interiorTaskId !== selectedTask.id) return [];
+
+    const weights: Record<string, number> = {
+      error: 0,
+      working: 1,
+      thinking: 2,
+      idle: 3,
+      done: 4,
+    };
+
+    return [...interior.agents].sort((left, right) => {
+      const leftWeight = weights[left.status] ?? 10;
+      const rightWeight = weights[right.status] ?? 10;
+      if (leftWeight !== rightWeight) return leftWeight - rightWeight;
+      return (left.name || left.id).localeCompare(right.name || right.id);
+    });
+  }, [interior, interiorTaskId, selectedTask?.id]);
 
   async function handlePlanetClick(taskId: string): Promise<void> {
     if (!linkMode) {
@@ -1767,11 +1886,11 @@ export default function TasksPage() {
                   </div>
                 </main>
 
-                <aside className="task-detail-side">
-                  <section className="task-shell">
-                    <div className="task-panel-head">
-                      <h1 style={{ margin: 0, fontSize: 16 }}>Stage progress</h1>
-                    </div>
+	                <aside className="task-detail-side">
+	                  <section className="task-shell">
+	                    <div className="task-panel-head">
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>Stage progress</h1>
+	                    </div>
                     <div className="task-panel-body">
                       <div className="stage-grid">
                         {selectedTask.stages.map((stage) => (
@@ -1782,13 +1901,43 @@ export default function TasksPage() {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  </section>
+	                    </div>
+	                  </section>
 
-                  <section className="task-shell">
-                    <div className="task-panel-head">
-                      <h1 style={{ margin: 0, fontSize: 16 }}>Recent events</h1>
-                    </div>
+	                  <section className="task-shell">
+	                    <div className="task-panel-head">
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>Robots</h1>
+	                    </div>
+	                    <div className="task-panel-body">
+	                      {interiorAgents.length > 0 ? (
+	                        <div className="task-agent-list">
+	                          {interiorAgents.map((agent) => {
+	                            const tone = agent.status === 'error' ? 'warn' : 'info';
+	                            const label = `${getRoleLabel(agent.role)} · ${getAgentStatusLabel(agent.status)}${typeof agent.progress === 'number' ? ` · ${agent.progress}%` : ''}`;
+	                            return (
+	                              <div key={agent.id} className="task-agent-card">
+	                                <div className="task-agent-head">
+	                                  <div className="task-agent-name">{agent.name}</div>
+	                                  <span className={`task-status-badge ${tone}`}>{agent.stageLabel}</span>
+	                                </div>
+	                                <div className="task-agent-meta">{label}</div>
+	                                {agent.currentAction ? (
+	                                  <div className="task-agent-hint">{agent.currentAction}</div>
+	                                ) : null}
+	                              </div>
+	                            );
+	                          })}
+	                        </div>
+	                      ) : (
+	                        <div className="task-empty">No active robots loaded yet.</div>
+	                      )}
+	                    </div>
+	                  </section>
+
+	                  <section className="task-shell">
+	                    <div className="task-panel-head">
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>Recent events</h1>
+	                    </div>
                     <div className="task-panel-body">
                       {recentEvents.length > 0 ? (
                         <div className="event-feed">
@@ -1804,36 +1953,40 @@ export default function TasksPage() {
                       ) : (
                         <div className="task-empty">No events yet.</div>
                       )}
-                    </div>
-                  </section>
+	                    </div>
+	                  </section>
 
-                  <section className="task-shell">
-                    <div className="task-panel-head">
-                      <h1 style={{ margin: 0, fontSize: 16 }}>Related tasks</h1>
-                    </div>
-                    <div className="task-panel-body">
-                      {relatedTasks.length > 0 ? (
-                        <div className="task-detail-tasklist">
-                          {relatedTasks.map((task) => (
-                            <button
-                              key={task.id}
-                              type="button"
-                              className="task-item"
-                              onClick={() => navigate(`/tasks/${task.id}`)}
-                            >
-                              <div className="task-title">{task.title}</div>
-                              <div className="task-meta">
-                                {getKindLabel(task.kind)} · {getStatusLabel(task.status)} · {task.progress}%
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="task-empty">No related tasks.</div>
-                      )}
-                    </div>
-                  </section>
-                </aside>
+	                  <section className="task-shell">
+	                    <div className="task-panel-head">
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>
+	                        Topic tasks{topicTasks.length > 0 ? ` (${topicTasks.length})` : ''}
+	                      </h1>
+	                    </div>
+	                    <div className="task-panel-body">
+	                      {topicTasks.length > 0 ? (
+	                        <div className="task-detail-tasklist">
+	                          {topicTasks.map((task) => (
+	                            <button
+	                              key={task.id}
+	                              type="button"
+	                              className="task-item"
+	                              onClick={() => navigate(`/tasks/${task.id}`)}
+	                            >
+	                              <div className="task-title">{task.title}</div>
+	                              <div className="task-meta">
+	                                {getKindLabel(task.kind)} · {getStatusLabel(task.status)} · {task.progress}%
+	                              </div>
+	                            </button>
+	                          ))}
+	                        </div>
+	                      ) : (
+	                        <div className="task-empty">
+	                          No topic links yet. Create edges in the Tasks universe view or reference previous tasks in your prompt.
+	                        </div>
+	                      )}
+	                    </div>
+	                  </section>
+	                </aside>
               </div>
             </>
           ) : (
