@@ -42,7 +42,18 @@ export function registerFeishuRelayRoutes(app: FastifyInstance, office: CrocOffi
       });
     }
 
-    if (!isComplexRequest(text)) {
+    const shouldStartTask = finalAnswerSource === 'openclaw' || isComplexRequest(text);
+
+    if (!shouldStartTask) {
+      console.log('[feishu:relay]', JSON.stringify({
+        chatId: `${chatId.slice(0, 6)}…${chatId.slice(-4)}`,
+        requestId,
+        threadId: req.body.threadId?.trim(),
+        textLength: text.length,
+        finalAnswerSource,
+        action: 'pass-through',
+        reason: 'Message does not look like a complex request that should enter task mode.',
+      }));
       return {
         ok: true,
         handled: false,
@@ -64,6 +75,17 @@ export function registerFeishuRelayRoutes(app: FastifyInstance, office: CrocOffi
     });
 
     if (!outcome.ok) {
+      console.log('[feishu:relay]', JSON.stringify({
+        chatId: `${chatId.slice(0, 6)}…${chatId.slice(-4)}`,
+        requestId,
+        threadId: req.body.threadId?.trim(),
+        textLength: text.length,
+        finalAnswerSource,
+        action: 'task-start-failed',
+        taskId: outcome.taskId,
+        error: outcome.error,
+        detail: outcome.detail,
+      }));
       return reply.code(502).send({
         ok: false,
         handled: false,
@@ -72,6 +94,18 @@ export function registerFeishuRelayRoutes(app: FastifyInstance, office: CrocOffi
         detail: outcome.detail,
       });
     }
+
+    console.log('[feishu:relay]', JSON.stringify({
+      chatId: `${chatId.slice(0, 6)}…${chatId.slice(-4)}`,
+      requestId,
+      threadId: req.body.threadId?.trim(),
+      textLength: text.length,
+      finalAnswerSource,
+      action: 'task-started',
+      taskId: outcome.result.taskId,
+      handled: finalAnswerSource !== 'openclaw',
+      trackFinal: finalAnswerSource === 'openclaw',
+    }));
 
     return {
       ok: true,
