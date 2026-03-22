@@ -4,7 +4,7 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { registerProjectRoutes } from './routes/project.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerPlanetRoutes } from './routes/planets.js';
@@ -48,7 +48,19 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   function sendSpaEntry(reply: { sendFile: (path: string) => unknown; code: (status: number) => any; header: (key: string, value: string) => any; send: (body: string) => unknown; }) {
     if (hasBuiltStudio()) {
-      return reply.sendFile('dist/index.html');
+      // Avoid stale HTML cache in mobile in-app browsers (hashed asset names change on deploy).
+      // `sendFile()` may override cache headers, so we manually send the HTML.
+      try {
+        const html = readFileSync(builtIndexPath, 'utf-8');
+        return reply
+          .code(200)
+          .header('content-type', 'text/html; charset=utf-8')
+          .header('cache-control', 'no-store')
+          .send(html);
+      } catch {
+        // Fallback to the static handler if for some reason the file is not readable.
+        return reply.sendFile('dist/index.html');
+      }
     }
 
     return reply.code(200).header('content-type', 'text/html').send(getEmbeddedHtml());
