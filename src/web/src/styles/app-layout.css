@@ -13,7 +13,7 @@ body,
 .app-version-badge {
   position: fixed;
   right: max(14px, env(safe-area-inset-right));
-  bottom: max(14px, env(safe-area-inset-bottom));
+  top: max(14px, env(safe-area-inset-top));
   z-index: 1000;
   display: inline-flex;
   flex-direction: column;
