@@ -21,6 +21,7 @@ import type {
   TaskRecord,
 } from '@features/tasks/types';
 import { getCurrentAppPath, navigate, subscribeNavigation } from '@shared/navigation';
+import { shouldPrefer2D, supportsWebGL } from '@shared/platform';
 
 const taskStyles = `
 :root {
@@ -1367,7 +1368,8 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export default function TasksPage() {
-  const [interiorViewMode, setInteriorViewMode] = useState<'3d' | '2d'>('3d');
+  const disable3D = useMemo(() => shouldPrefer2D() || !supportsWebGL(), []);
+  const [interiorViewMode, setInteriorViewMode] = useState<'3d' | '2d'>(() => (disable3D ? '2d' : '3d'));
   const pathname = useSyncExternalStore(subscribeNavigation, getCurrentAppPath, () => '/tasks');
   const selectedTaskId = parseSelectedTaskId(pathname);
   const detailMode = Boolean(selectedTaskId);
@@ -1391,6 +1393,12 @@ export default function TasksPage() {
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [edgeBusy, setEdgeBusy] = useState(false);
   const [edgeError, setEdgeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (disable3D && interiorViewMode === '3d') {
+      setInteriorViewMode('2d');
+    }
+  }, [disable3D, interiorViewMode]);
 
   async function refreshUniverse(): Promise<void> {
     try {
@@ -1775,7 +1783,7 @@ export default function TasksPage() {
 
   const interiorContent = selectedTask && selectedPlanet ? (
     interior && interiorTaskId === selectedTask.id && !interiorError ? (
-      interiorViewMode === '3d' ? (
+      interiorViewMode === '3d' && !disable3D ? (
         <PlanetInteriorScene3D
           planet={selectedPlanet}
           interior={interior}
@@ -1855,10 +1863,10 @@ export default function TasksPage() {
 
               <div className="task-detail-grid">
                 <main className="task-shell task-detail-main">
-                  <div className="task-main-head">
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                      <div>
-                        <h1 style={{ margin: 0, fontSize: 18 }}>Task detail</h1>
+                    <div className="task-main-head">
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                        <div>
+                          <h1 style={{ margin: 0, fontSize: 18 }}>Task detail</h1>
                         <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
                           This page is optimized for the Feishu progress card and focuses on one task.
                         </div>
@@ -1866,8 +1874,10 @@ export default function TasksPage() {
                       <div className="task-view-switch">
                         <button
                           type="button"
-                          className={`task-tool-btn ${interiorViewMode === '3d' ? 'active' : ''}`}
+                          className={`task-tool-btn ${interiorViewMode === '3d' && !disable3D ? 'active' : ''}`}
                           onClick={() => setInteriorViewMode('3d')}
+                          disabled={disable3D}
+                          title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
                         >
                           Workspace
                         </button>
@@ -2243,8 +2253,10 @@ export default function TasksPage() {
                 <div className="task-view-switch">
                   <button
                     type="button"
-                    className={`task-tool-btn ${interiorViewMode === '3d' ? 'active' : ''}`}
+                    className={`task-tool-btn ${interiorViewMode === '3d' && !disable3D ? 'active' : ''}`}
                     onClick={() => setInteriorViewMode('3d')}
+                    disabled={disable3D}
+                    title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
                   >
                     像素办公室
                   </button>
@@ -2265,7 +2277,7 @@ export default function TasksPage() {
           <div className="task-main-body">
             {selectedTask && selectedPlanet ? (
               interior && interiorTaskId === selectedTask.id && !interiorError ? (
-                interiorViewMode === '3d' ? (
+                interiorViewMode === '3d' && !disable3D ? (
                   <PlanetInteriorScene3D
                     planet={selectedPlanet}
                     interior={interior}

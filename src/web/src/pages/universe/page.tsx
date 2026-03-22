@@ -5,6 +5,7 @@ import type { PlanetEdge, PlanetListResponse, PlanetOverviewItem, TaskRecord } f
 import UniverseCanvas from '@features/tasks/universe/UniverseCanvas';
 import UniverseScene3D from '@features/tasks/universe/UniverseScene3D';
 import { navigate, subscribeNavigation } from '@shared/navigation';
+import { shouldPrefer2D, supportsWebGL } from '@shared/platform';
 
 const universeStyles = `
 :root {
@@ -462,6 +463,8 @@ function parseFocusPlanetId(search: string): string | null {
 }
 
 function parseViewMode(search: string): UniverseViewMode {
+  const disable3D = shouldPrefer2D() || !supportsWebGL();
+  if (disable3D) return '2d';
   const view = new URLSearchParams(search).get('view');
   return view === '2d' ? '2d' : '3d';
 }
@@ -585,6 +588,7 @@ export default function UniversePage() {
   const search = useSyncExternalStore(subscribeNavigation, () => window.location.search, () => '');
   const focusPlanetId = parseFocusPlanetId(search);
   const viewMode = parseViewMode(search);
+  const disable3D = useMemo(() => shouldPrefer2D() || !supportsWebGL(), []);
   const [planets, setPlanets] = useState<PlanetOverviewItem[]>([]);
   const [edges, setEdges] = useState<PlanetEdge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -799,8 +803,10 @@ export default function UniversePage() {
               <div className="universe-view-switch">
                 <button
                   type="button"
-                  className={`universe-btn ${viewMode === '3d' ? 'primary' : ''}`}
+                  className={`universe-btn ${viewMode === '3d' && !disable3D ? 'primary' : ''}`}
                   onClick={() => navigate(buildUniverseUrl(selectedPlanet?.id ?? focusPlanetId, '3d'))}
+                  disabled={disable3D}
+                  title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
                 >
                   3D 星图
                 </button>
@@ -925,7 +931,7 @@ export default function UniversePage() {
                     当前服务器尚未提供 Planet API。现在展示的是由 `/api/tasks` 推导出的宇宙视图，因此连线关系和更丰富的星球元数据暂不可用。
                   </div>
                 ) : null}
-                {viewMode === '3d' ? (
+                {viewMode === '3d' && !disable3D ? (
                   <UniverseScene3D
                     planets={planets}
                     edges={filteredUniverse.visibleEdges}
