@@ -77,11 +77,20 @@ body {
   margin: 0 auto;
 }
 .task-detail-topbar {
+  position: sticky;
+  top: 14px;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 251, 246, 0.84);
+  box-shadow: 0 18px 52px rgba(84, 67, 48, 0.08);
+  backdrop-filter: blur(18px);
 }
 .task-detail-grid {
   display: grid;
@@ -358,6 +367,38 @@ body {
 .task-active-item {
   width: 100%;
   font: inherit;
+  position: relative;
+  text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.task-active-item::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(154, 138, 119, 0.5);
+  opacity: 0.9;
+}
+.task-active-item[data-status="running"]::before {
+  background: color-mix(in srgb, var(--task-orange) 72%, rgba(255, 255, 255, 0.3));
+}
+.task-active-item[data-status="waiting"]::before {
+  background: color-mix(in srgb, var(--task-purple) 72%, rgba(255, 255, 255, 0.3));
+}
+.task-active-item[data-status="done"]::before {
+  background: color-mix(in srgb, var(--task-accent) 70%, rgba(255, 255, 255, 0.3));
+}
+.task-active-item[data-status="failed"]::before {
+  background: color-mix(in srgb, var(--task-red) 74%, rgba(255, 255, 255, 0.3));
+}
+.task-active-item:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--task-blue) 28%, var(--task-border));
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 44px rgba(84, 67, 48, 0.1);
 }
 .task-legend-item {
   display: flex;
@@ -525,22 +566,49 @@ body {
   gap: 8px;
 }
 .task-item {
-  padding: 12px;
-  border-radius: 14px;
+  position: relative;
+  padding: 12px 12px 12px 22px;
+  border-radius: 16px;
   border: 1px solid var(--task-border);
   background: var(--task-card);
   cursor: pointer;
-  transition: 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
   color: inherit;
   text-align: left;
+  box-shadow: 0 12px 32px rgba(84, 67, 48, 0.06);
+}
+.task-item::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(154, 138, 119, 0.5);
+  opacity: 0.9;
+}
+.task-item[data-status="running"]::before {
+  background: color-mix(in srgb, var(--task-orange) 72%, rgba(255, 255, 255, 0.3));
+}
+.task-item[data-status="waiting"]::before {
+  background: color-mix(in srgb, var(--task-purple) 72%, rgba(255, 255, 255, 0.3));
+}
+.task-item[data-status="done"]::before {
+  background: color-mix(in srgb, var(--task-accent) 70%, rgba(255, 255, 255, 0.3));
+}
+.task-item[data-status="failed"]::before {
+  background: color-mix(in srgb, var(--task-red) 74%, rgba(255, 255, 255, 0.3));
 }
 .task-item:hover,
 .task-item.active {
+  transform: translateY(-1px);
   background: var(--task-hover);
-  border-color: color-mix(in srgb, var(--task-accent) 42%, var(--task-border));
+  border-color: color-mix(in srgb, var(--task-accent) 36%, var(--task-border));
+  box-shadow: 0 20px 52px rgba(84, 67, 48, 0.12);
 }
 .task-title {
-  font-weight: 700;
+  font-weight: 850;
   font-size: 14px;
   line-height: 1.45;
 }
@@ -576,6 +644,25 @@ body {
 .badge.waiting { color: var(--task-orange); }
 .badge.done { color: var(--task-blue); }
 .badge.archived { color: var(--task-muted); }
+.badge.running {
+  border-color: color-mix(in srgb, var(--task-accent) 22%, var(--task-border));
+  background: rgba(46, 107, 89, 0.08);
+}
+.badge.waiting {
+  border-color: color-mix(in srgb, var(--task-orange) 22%, var(--task-border));
+  background: rgba(183, 128, 52, 0.1);
+}
+.badge.done {
+  border-color: color-mix(in srgb, var(--task-blue) 22%, var(--task-border));
+  background: rgba(86, 116, 143, 0.1);
+}
+.badge.failed {
+  border-color: color-mix(in srgb, var(--task-red) 22%, var(--task-border));
+  background: rgba(185, 90, 74, 0.08);
+}
+.badge.archived {
+  background: rgba(151, 130, 105, 0.08);
+}
 .task-planet {
   cursor: pointer;
   transition: transform 0.18s ease;
@@ -607,6 +694,18 @@ body {
   border-radius: 18px;
   border: 1px solid var(--task-border);
   background: var(--task-card);
+}
+.task-detail-hero[data-status="running"] {
+  border-color: color-mix(in srgb, var(--task-accent) 26%, var(--task-border));
+}
+.task-detail-hero[data-status="waiting"] {
+  border-color: color-mix(in srgb, var(--task-orange) 26%, var(--task-border));
+}
+.task-detail-hero[data-status="done"] {
+  border-color: color-mix(in srgb, var(--task-blue) 26%, var(--task-border));
+}
+.task-detail-hero[data-status="failed"] {
+  border-color: color-mix(in srgb, var(--task-red) 26%, var(--task-border));
 }
 .summary-card {
   padding: 18px;
@@ -1836,7 +1935,7 @@ export default function TasksPage() {
 
           {selectedTask ? (
             <>
-              <section className="task-shell task-detail-hero">
+              <section className="task-shell task-detail-hero" data-status={selectedTask.status}>
                 <div style={{ color: 'var(--task-dim)', fontSize: 12, letterSpacing: '0.12em', fontWeight: 700 }}>
                   TASK DETAIL
                 </div>
@@ -2183,13 +2282,14 @@ export default function TasksPage() {
 
             <div className="task-active-list">
               {activePlanets.length > 0 ? activePlanets.map((planet) => (
-                <button
-                  key={planet.id}
-                  type="button"
-                  className="task-active-item"
-                  style={{ color: 'inherit', textAlign: 'left', cursor: 'pointer', background: 'var(--task-card)' }}
-                  onClick={() => navigate(`/tasks/${planet.id}`)}
-                >
+	                <button
+	                  key={planet.id}
+	                  type="button"
+	                  className="task-active-item"
+	                  data-status={planet.status}
+	                  style={{ color: 'inherit', textAlign: 'left', cursor: 'pointer', background: 'var(--task-card)' }}
+	                  onClick={() => navigate(`/tasks/${planet.id}`)}
+	                >
                   <div style={{ fontWeight: 700 }}>{planet.title}</div>
                   <div className="meta">
                     {getStatusLabel(planet.status)} · {planet.progress}% · {planet.currentStageLabel ? getStageLabel(planet.currentStageLabel, planet.currentStageKey) : getKindLabel(planet.kind)}
@@ -2219,6 +2319,7 @@ export default function TasksPage() {
                 <button
                   key={task.id}
                   className={`task-item ${task.id === selectedTask?.id ? 'active' : ''}`}
+                  data-status={task.status}
                   type="button"
                   onClick={() => navigate(`/tasks/${task.id}`)}
                 >

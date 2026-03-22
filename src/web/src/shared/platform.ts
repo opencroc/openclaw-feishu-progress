@@ -36,7 +36,7 @@ export function supportsWebGL(): boolean {
  * when heavy WebGL scenes initialize. Prefer 2D to keep the task detail usable.
  */
 export function shouldPrefer2D(): boolean {
-  if (!isProbablyIOS()) return false;
-  return true;
+  if (isFeishuInAppBrowser()) return true;
+  if (isProbablyIOS()) return true;
+  return false;
 }
-
