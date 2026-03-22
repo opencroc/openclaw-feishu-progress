@@ -1,6 +1,7 @@
 import { useEffect, type PropsWithChildren } from 'react';
 
 import type { AppRoute } from './routes';
+import RuntimeVersionBadge from './RuntimeVersionBadge';
 
 type AppLayoutProps = PropsWithChildren<{
   route: AppRoute;
@@ -29,6 +30,7 @@ export default function AppLayout({ route, children }: AppLayoutProps) {
       aria-label={route.description}
     >
       {children}
+      <RuntimeVersionBadge />
     </div>
   );
 }

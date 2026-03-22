@@ -9,6 +9,7 @@ import { registerProjectRoutes } from './routes/project.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerPlanetRoutes } from './routes/planets.js';
 import { registerStudioRoutes } from './routes/studio.js';
+import { registerVersionRoutes } from './routes/version.js';
 import { CrocOffice } from './croc-office.js';
 import { FilePlanetMetaStore } from './planet-meta-store.js';
 import { FileStudioSnapshotStore } from './studio-store.js';
@@ -19,6 +20,7 @@ import { FeishuApiDelivery } from './feishu-delivery.js';
 import { registerFeishuIngressRoutes } from './feishu-ingress.js';
 import { registerFeishuRelayRoutes } from './feishu-relay.js';
 import { registerFeishuSmokeRoutes } from './feishu-smoke.js';
+import { resolveRuntimeVersionInfo } from './version.js';
 import type { OpenCrocConfig } from '../types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -34,6 +36,7 @@ export interface ServeOptions {
 
 export async function startServer(opts: ServeOptions): Promise<void> {
   const app = Fastify({ logger: false });
+  const runtimeVersionInfo = resolveRuntimeVersionInfo(opts.cwd);
 
   // --- WebSocket ---
   await app.register(fastifyWebsocket);
@@ -100,6 +103,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
   registerAgentRoutes(app, office);
   registerPlanetRoutes(app, office, planetMetaStore, edgeStore);
   registerStudioRoutes(app, office, snapshotStore);
+  registerVersionRoutes(app, runtimeVersionInfo);
   registerFeishuIngressRoutes(app, office, feishuBridge);
   registerFeishuRelayRoutes(app, office, feishuBridge);
   registerFeishuSmokeRoutes(app, office);
