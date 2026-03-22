@@ -36,6 +36,8 @@ export interface TaskRecord {
   kind: string;
   title: string;
   sourceText?: string;
+  /** Deterministic topic id (e.g. Feishu thread). When set, auto edges should avoid cross-topic mixing. */
+  topicId?: string;
   status: TaskStatus;
   progress: number;
   currentStageKey?: string;
@@ -58,6 +60,7 @@ export interface CreateTaskInput {
   kind: string;
   title: string;
   sourceText?: string;
+  topicId?: string;
   stageLabels: Array<{ key: string; label: string }>;
 }
 
@@ -86,6 +89,7 @@ export class TaskStore {
       kind: input.kind,
       title: input.title,
       sourceText: input.sourceText,
+      topicId: input.topicId,
       status: 'queued',
       progress: 0,
       createdAt,

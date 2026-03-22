@@ -1,6 +1,7 @@
 import type { CrocOffice } from './croc-office.js';
 import type { FeishuProgressBridge } from './feishu-bridge.js';
 import { classifyChatTaskIntent, dispatchChatTask } from './chat-task-dispatcher.js';
+import { computeFeishuTopicId } from './topic.js';
 
 export interface ComplexRequestStartResult {
   kind: 'task-start';
@@ -73,7 +74,13 @@ export async function startComplexFeishuChatTask(
   feishuBridge: FeishuProgressBridge,
   params: FeishuComplexTaskStartParams,
 ): Promise<FeishuComplexTaskStartOutcome> {
-  const task = office.createChatTask(buildTitle(params.text), params.text);
+  const topicId = computeFeishuTopicId({
+    chatId: params.chatId,
+    threadId: params.threadId,
+    rootMessageId: params.rootMessageId,
+    requestId: params.requestId,
+  });
+  const task = office.createChatTask(buildTitle(params.text), params.text, topicId);
   office.bindTaskToFeishu(task.id, {
     chatId: params.chatId,
     threadId: params.threadId,

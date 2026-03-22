@@ -159,10 +159,43 @@ export function inferPlanetEdges(tasks: TaskRecord[]): PlanetEdge[] {
   const sortedTasks = [...tasks].sort((left, right) => left.createdAt - right.createdAt);
   const edges = new Map<string, PlanetEdge>();
 
+  // 1) Deterministic topic edges (strict-by-thread): connect tasks in the same topic as a sparse chain.
+  // This makes topic navigation reliable without creating a dense graph.
+  const tasksByTopic = new Map<string, TaskRecord[]>();
+  for (const task of sortedTasks) {
+    if (!task.topicId) continue;
+    const bucket = tasksByTopic.get(task.topicId) ?? [];
+    bucket.push(task);
+    tasksByTopic.set(task.topicId, bucket);
+  }
+
+  for (const [topicId, bucket] of tasksByTopic) {
+    const ordered = [...bucket].sort((left, right) => left.createdAt - right.createdAt);
+    for (let index = 1; index < ordered.length; index += 1) {
+      const later = ordered[index]!;
+      const earlier = ordered[index - 1]!;
+      const edge: PlanetEdge = {
+        fromPlanetId: later.id,
+        toPlanetId: earlier.id,
+        type: 'related-to',
+        confidence: 0.98,
+        source: 'auto',
+        reason: `same topic: ${topicId}`,
+      };
+      edges.set(edgeKey(edge.fromPlanetId, edge.toPlanetId), edge);
+    }
+  }
+
   for (let earlierIndex = 0; earlierIndex < sortedTasks.length; earlierIndex += 1) {
     for (let laterIndex = earlierIndex + 1; laterIndex < sortedTasks.length; laterIndex += 1) {
       const earlier = sortedTasks[earlierIndex];
       const later = sortedTasks[laterIndex];
+
+      // Strict-by-thread topic isolation: if both tasks have a topicId, never infer cross-topic edges.
+      if (earlier?.topicId && later?.topicId && earlier.topicId !== later.topicId) {
+        continue;
+      }
+
       const signals = collectSignals(earlier, later);
       const confidence = aggregateConfidence(signals);
 

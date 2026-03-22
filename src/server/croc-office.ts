@@ -133,28 +133,40 @@ export class CrocOffice {
     }
   }
 
-  createTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>, sourceText?: string): TaskRecord {
-    const task = this.taskStore.create({ kind, title, stageLabels, sourceText });
+  createTask(
+    kind: string,
+    title: string,
+    stageLabels: Array<{ key: string; label: string }>,
+    sourceText?: string,
+    topicId?: string,
+  ): TaskRecord {
+    const task = this.taskStore.create({ kind, title, stageLabels, sourceText, topicId });
     void this.emitTaskUpdate(task);
     return task;
   }
 
-  createChatTask(title: string, sourceText?: string): TaskRecord {
+  createChatTask(title: string, sourceText?: string, topicId?: string): TaskRecord {
     return this.createTask('chat', title, [
       { key: 'receive', label: 'Receive task' },
       { key: 'understand', label: 'Understand problem' },
       { key: 'gather', label: 'Gather materials / scan context' },
       { key: 'generate', label: 'Generate answer' },
       { key: 'finalize', label: 'Finalize output' },
-    ], sourceText);
+    ], sourceText, topicId);
   }
 
-  ensureActiveTask(kind: string, title: string, stageLabels: Array<{ key: string; label: string }>, sourceText?: string): TaskRecord {
+  ensureActiveTask(
+    kind: string,
+    title: string,
+    stageLabels: Array<{ key: string; label: string }>,
+    sourceText?: string,
+    topicId?: string,
+  ): TaskRecord {
     if (this.activeTaskId) {
       const existing = this.taskStore.get(this.activeTaskId);
       if (existing) return existing;
     }
-    const task = this.createTask(kind, title, stageLabels, sourceText);
+    const task = this.createTask(kind, title, stageLabels, sourceText, topicId);
     this.activateTask(task.id);
     return task;
   }

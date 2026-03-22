@@ -26,6 +26,9 @@
 
 交付（主线 A：OpenClaw/飞书）
 
+- Topic 基座（strict-by-thread）：为每个 Feishu/OpenClaw 对话线程生成确定性的 `topicId`，并禁止跨 `topicId` 的自动关联，避免“莫名其妙把两件事混在一起”
+- 详情页增强：在 `/tasks/:id` 详情中展示该话题的机器人 roster 与话题任务串（基于 `topicId` / 星球关系）
+- 手动关联作为补充：支持手动把不同话题的任务用星球关系关联（等价 topic merge 的最小形态）
 - `/api/feishu/webhook` 的安全校验与幂等去重“可持久”：重启进程后仍能在 TTL 内去重
 - `/api/feishu/relay` 与 `/api/feishu/relay/event` 增加最小鉴权（共享密钥/HMAC），并有回放保护（timestamp/nonce）
 - 出站投递稳态：对 429/5xx/网络抖动的重试退避策略明确，可配置，且不会造成无限重试与消息风暴
@@ -50,6 +53,7 @@ Sprint 1 DoD（验收）
 - `waiting` 状态生成带按钮的卡片（例如：继续执行/停止/只生成报告/仅 scan），并支持回调
 - 增加决策提交接口（例如：`POST /api/tasks/:id/decision`），支持 option id 与可选 free text
 - 卡片 `card-live` 原地更新：用户点选后，卡片显示“已选择 X”，并推进任务状态
+- Topic 决策门禁：机器人自动产出“会影响外部/会写入产物/会修改代码”的内容时，必须先进入 `waiting`，由你在飞书卡片里确认
 
 交付（主线 B：任务编排）
 
@@ -70,6 +74,7 @@ Sprint 2 DoD（验收）
 - 增加 `/healthz`（以及必要的 `/readyz`）并明确判断标准（配置、存储、飞书凭据可用性）
 - systemd 或 Docker 交付物完善：环境变量清单、日志路径、升级步骤、回滚方式
 - 飞书相关关键错误可定位：token 获取失败、权限不足、429、卡片更新失败、消息线程参数不匹配
+- Topic 可观测：能按 `topicId` 聚合查看任务列表、成功率、耗时与失败原因分布（先做 server 侧聚合 + 基础 UI）
 
 交付（主线 B：scan/graph 的可观测）
 
@@ -89,6 +94,7 @@ Sprint 3 DoD（验收）
 
 - done/failed 的最终摘要模板化：结论、关键数据、产物链接（report/文件/仪表盘）
 - 将 checklist/workorder/token usage（如有）作为可选附件回传（文本或卡片分块）
+- Topic 知识图谱 v1：一个话题内支持沉淀 `方案/需求/design/tasks/结论/风险/决策` 等节点，并在详情页或 Studio 中可视化（先从最小节点类型集开始）
 
 交付（主线 B：执行与自愈质量）
 
@@ -108,6 +114,7 @@ Sprint 4 DoD（验收）
 
 - 按 chatId/tenant 的并发与队列策略：默认串行，同 chat 不乱序；跨 chat 可并行但有全局上限
 - 任务取消/超时：能在飞书触发取消，并在 Studio 与飞书都可见（含幂等）
+- Topic 自动归类与分配（增强）：基于话题图谱节点类型与标签，把工作自动分派给对应机器人维护（默认保守，只在同 `topicId` 内工作）
 
 交付（主线 B：远程 scan 与任务化运行）
 

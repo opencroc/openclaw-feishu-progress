@@ -21,6 +21,7 @@ export type TaskRecord = {
   kind: string;
   title: string;
   sourceText?: string;
+  topicId?: string;
   status: 'queued' | 'running' | 'waiting' | 'done' | 'failed';
   progress: number;
   currentStageKey?: string;

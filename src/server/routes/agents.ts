@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from '../croc-office.js';
 import type { ExecutionRunMode } from '../../execution/types.js';
 import type { TaskDecisionPrompt } from '../task-store.js';
+import { computeFeishuTopicId } from '../topic.js';
 export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): void {
   // GET /api/agents — list all croc agents
   app.get('/api/agents', async () => {
@@ -94,7 +95,13 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
 
   // POST /api/feishu/tasks/start — create a chat task for a complex Feishu request and return immediate ACK payload
   app.post<{ Body: { title: string; chatId: string; threadId?: string; requestId?: string; detail?: string } }>('/api/feishu/tasks/start', async (req) => {
-    const task = office.createChatTask(req.body.title, req.body.title);
+    const topicId = computeFeishuTopicId({
+      chatId: req.body.chatId,
+      threadId: req.body.threadId,
+      rootMessageId: req.body.requestId,
+      requestId: req.body.requestId,
+    });
+    const task = office.createChatTask(req.body.title, req.body.title, topicId);
     office.bindTaskToFeishu(task.id, {
       chatId: req.body.chatId,
       threadId: req.body.threadId,
