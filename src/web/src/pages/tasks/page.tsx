@@ -12,6 +12,7 @@ import {
 import PlanetInterior from '@features/tasks/interior/PlanetInterior';
 import PlanetInteriorScene3D from '@features/tasks/interior/PlanetInteriorScene3D';
 import PlanetUniverse, { PLANET_UNIVERSE_VIEW_BOX, type PlanetUniverseViewport } from '@features/tasks/universe/PlanetUniverse';
+import UniverseScene3D from '@features/tasks/universe/UniverseScene3D';
 import type {
   PlanetEdge,
   PlanetInteriorData,
@@ -559,6 +560,101 @@ body {
   padding: 14px 16px 16px;
   overflow: auto;
   min-height: 0;
+}
+.universe-canvas-shell {
+  position: relative;
+  height: 100%;
+}
+.universe-canvas-stage {
+  height: 100%;
+  min-height: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(100, 83, 61, 0.1);
+  background:
+    radial-gradient(circle at 18% 20%, rgba(86, 116, 143, 0.08), transparent 20%),
+    radial-gradient(circle at 74% 18%, rgba(183, 128, 52, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(246, 239, 228, 0.96));
+  cursor: grab;
+}
+.universe-canvas-stage:active {
+  cursor: grabbing;
+}
+.universe-canvas-stage-3d {
+  position: relative;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(86, 116, 143, 0.12), transparent 24%),
+    radial-gradient(circle at 78% 18%, rgba(183, 128, 52, 0.12), transparent 24%),
+    radial-gradient(circle at 50% 72%, rgba(46, 107, 89, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(244, 236, 225, 0.98));
+}
+.universe-scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.universe-scene-overlay {
+  position: absolute;
+  inset: 18px auto auto 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(420px, calc(100% - 36px));
+  pointer-events: none;
+}
+.universe-scene-badge {
+  align-self: flex-start;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(100, 83, 61, 0.14);
+  background: rgba(255, 251, 246, 0.88);
+  color: var(--task-dim);
+  font-size: 12px;
+}
+.universe-scene-hud,
+.universe-scene-note {
+  border-radius: 20px;
+  border: 1px solid rgba(100, 83, 61, 0.14);
+  background: rgba(255, 251, 246, 0.82);
+  box-shadow: 0 18px 50px rgba(84, 67, 48, 0.08);
+  backdrop-filter: blur(18px);
+  padding: 14px 16px;
+}
+.universe-scene-hud strong {
+  display: block;
+  color: var(--task-text);
+  font-size: 16px;
+}
+.universe-scene-hud span,
+.universe-scene-note {
+  display: block;
+  color: var(--task-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.universe-scene-hud span + span {
+  margin-top: 6px;
+}
+.universe-canvas-toolbar {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.universe-canvas-toolbar button {
+  border: 1px solid rgba(100, 83, 61, 0.14);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 251, 246, 0.9);
+  color: var(--task-text);
+  font: inherit;
+  cursor: pointer;
+}
+.universe-canvas-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .task-list {
   display: flex;
@@ -1468,6 +1564,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export default function TasksPage() {
   const disable3D = useMemo(() => shouldPrefer2D() || !supportsWebGL(), []);
+  const [overviewViewMode, setOverviewViewMode] = useState<'3d' | '2d'>(() => (disable3D ? '2d' : '3d'));
   const [interiorViewMode, setInteriorViewMode] = useState<'3d' | '2d'>(() => (disable3D ? '2d' : '3d'));
   const pathname = useSyncExternalStore(subscribeNavigation, getCurrentAppPath, () => '/tasks');
   const selectedTaskId = parseSelectedTaskId(pathname);
@@ -1492,6 +1589,12 @@ export default function TasksPage() {
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [edgeBusy, setEdgeBusy] = useState(false);
   const [edgeError, setEdgeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (disable3D && overviewViewMode === '3d') {
+      setOverviewViewMode('2d');
+    }
+  }, [disable3D, overviewViewMode]);
 
   useEffect(() => {
     if (disable3D && interiorViewMode === '3d') {
@@ -1830,6 +1933,14 @@ export default function TasksPage() {
   }, [planetApiFallback]);
 
   useEffect(() => {
+    if (overviewViewMode !== '3d') return;
+    setLinkMode(false);
+    setLinkSourceId(null);
+    setSelectedEdgeKey(null);
+    setEdgeError(null);
+  }, [overviewViewMode]);
+
+  useEffect(() => {
     if (!selectedTask) {
       setInterior(null);
       setInteriorError(null);
@@ -1907,6 +2018,7 @@ export default function TasksPage() {
   );
 
   const recentEvents = selectedTask ? [...selectedTask.events].slice(-8).reverse() : [];
+  const overviewUse3d = overviewViewMode === '3d' && !disable3D && !linkMode && !selectedEdgeKey;
 
   if (detailMode) {
     return (
@@ -2120,6 +2232,15 @@ export default function TasksPage() {
             <div className="task-universe-body">
               {loading && planets.length === 0 ? (
                 <div className="task-empty">正在加载任务星图…</div>
+              ) : overviewUse3d ? (
+                <UniverseScene3D
+                  planets={planets}
+                  edges={edges}
+                  selectedId={null}
+                  mutedPlanetIds={[]}
+                  highlightPlanetIds={selectedTask ? [selectedTask.id] : []}
+                  onPlanetClick={(taskId) => { void handlePlanetClick(taskId); }}
+                />
               ) : (
                 <PlanetUniverse
                   planets={planets}
@@ -2143,8 +2264,26 @@ export default function TasksPage() {
                 </div>
                 <div className="task-overview-actions">
                   <span className={`task-status-badge ${planetApiFallback ? 'warn' : 'info'}`}>
-                    {planetApiFallback ? '仅任务接口' : '实时星图'}
+                    {planetApiFallback ? '仅任务接口' : overviewUse3d ? '3D 实时星图' : '2D 编辑视图'}
                   </span>
+                  <div className="task-view-switch">
+                    <button
+                      type="button"
+                      className={`task-tool-btn ${overviewViewMode === '3d' && !disable3D ? 'active' : ''}`}
+                      onClick={() => setOverviewViewMode('3d')}
+                      disabled={disable3D}
+                      title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
+                    >
+                      3D 星图
+                    </button>
+                    <button
+                      type="button"
+                      className={`task-tool-btn ${overviewViewMode === '2d' ? 'active' : ''}`}
+                      onClick={() => setOverviewViewMode('2d')}
+                    >
+                      2D 星图
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="task-tool-btn"
@@ -2155,7 +2294,7 @@ export default function TasksPage() {
                 </div>
               </div>
               <div className="task-overview-lede">
-                把扫描、流水线和飞书复杂任务统一放进一张持续刷新的星图里。发光的是执行中任务，闪烁的是待确认节点，点进任意星球就能查看完整进度卡片。
+                把扫描、流水线和飞书复杂任务统一放进一张持续刷新的星图里。默认用 3D 总览看整体流动，需要建边、改关系或精确查看节点时再切回 2D 平面。
               </div>
               <div className="task-overview-pills">
                 <span className="task-overview-pill"><strong>{stats.total}</strong> 个任务已装载</span>
@@ -2219,7 +2358,7 @@ export default function TasksPage() {
                     setSelectedEdgeKey(null);
                     setEdgeError(null);
                   }}
-                  disabled={planetApiFallback}
+                  disabled={planetApiFallback || overviewViewMode === '3d'}
                 >
                   {linkMode ? '退出连线模式' : '创建连线'}
                 </button>
@@ -2227,7 +2366,7 @@ export default function TasksPage() {
                   className="task-tool-select"
                   value={linkType}
                   onChange={(event) => setLinkType(event.target.value as PlanetEdge['type'])}
-                  disabled={!linkMode || planetApiFallback}
+                  disabled={!linkMode || planetApiFallback || overviewViewMode === '3d'}
                 >
                   <option value="related-to">{getEdgeTypeLabel('related-to')}</option>
                   <option value="depends-on">{getEdgeTypeLabel('depends-on')}</option>
@@ -2237,6 +2376,8 @@ export default function TasksPage() {
               <div className="task-edge-reason">
                 {planetApiFallback
                   ? '当前处于降级模式，本次部署中不可用星球关系和自动依赖推断。'
+                  : overviewViewMode === '3d'
+                  ? '3D 视图下仅支持浏览与聚焦星球。需要创建/编辑关系请切换到 2D 星图。'
                   : linkMode
                   ? (linkSourceId
                     ? `已锁定起点：${planets.find((planet) => planet.id === linkSourceId)?.title || linkSourceId}。再点击另一颗星球即可建立“${getEdgeTypeLabel(linkType)}”关系。`
