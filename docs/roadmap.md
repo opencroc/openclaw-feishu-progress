@@ -43,8 +43,8 @@
 Sprint 1 DoD（验收）
 
 - 已完成：针对 webhook/relay 鉴权与去重的单测覆盖完成，并在 CI 里跑
-- 进行中：本地 smoke：能在飞书看到 ACK -> 多次 progress -> done/failed（主链路已具备，含重试场景的闭环未完成）
-- 进行中：文档：新增/更新“鉴权配置与部署注意事项”小节（已有 Troubleshooting / systemd 基础，未形成鉴权专节）
+- 已完成：本地 smoke：能在飞书看到 ACK -> 多次 progress -> done/failed；ACK 失败与出站重试场景由单测覆盖
+- 已完成：文档：补齐“飞书鉴权与部署”专节，覆盖 `.env -> config -> webhook/relay 鉴权 -> systemd -> smoke 验收`
 
 ## Sprint 2（2026-04-06 ~ 2026-04-19）：等待态决策与卡片交互闭环（进行中）
 

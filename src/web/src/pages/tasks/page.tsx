@@ -661,6 +661,201 @@ body {
   flex-direction: column;
   gap: 8px;
 }
+.task-topic-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.task-topic-card,
+.task-topic-section {
+  border-radius: 20px;
+  border: 1px solid var(--task-border);
+  background:
+    radial-gradient(circle at top right, rgba(86, 116, 143, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 242, 233, 0.9));
+  box-shadow: 0 14px 36px rgba(84, 67, 48, 0.08);
+}
+.task-topic-card {
+  padding: 14px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.task-topic-card:hover,
+.task-topic-card.active {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--task-blue) 30%, var(--task-border));
+  box-shadow: 0 18px 44px rgba(84, 67, 48, 0.12);
+}
+.task-topic-card-top,
+.task-topic-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.task-topic-card-title,
+.task-topic-section-title {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+.task-topic-card-meta,
+.task-topic-section-meta,
+.task-topic-spotlight-meta {
+  margin-top: 6px;
+  color: var(--task-dim);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.task-topic-card-stats,
+.task-topic-head-stats,
+.task-topic-spotlight-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.task-topic-groups {
+  gap: 14px;
+}
+.task-topic-section {
+  padding: 14px;
+}
+.task-topic-head-copy {
+  min-width: 0;
+}
+.task-topic-head-stats {
+  justify-content: flex-end;
+}
+.task-topic-code {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px dashed rgba(100, 83, 61, 0.18);
+  background: rgba(255, 251, 246, 0.76);
+  color: var(--task-muted);
+  font-size: 11px;
+  line-height: 1;
+  font-family: "SFMono-Regular", "Menlo", "Monaco", "Courier New", monospace;
+}
+.task-topic-tasklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-item-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.task-item-topline-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.task-item-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(100, 83, 61, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--task-blue);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.task-item-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.task-item-side {
+  flex: 0 0 auto;
+  color: var(--task-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: right;
+}
+.task-item-summary {
+  margin-top: 8px;
+  color: var(--task-text);
+  font-size: 12px;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.task-topic-spotlight {
+  padding: 18px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(46, 107, 89, 0.12), transparent 34%),
+    radial-gradient(circle at right top, rgba(86, 116, 143, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(248, 242, 233, 0.94));
+}
+.task-topic-spotlight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+.task-topic-spotlight h2 {
+  margin: 10px 0 0;
+  font-size: 24px;
+  line-height: 1.25;
+}
+.task-topic-spotlight-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 251, 246, 0.76);
+  box-shadow: 0 14px 38px rgba(84, 67, 48, 0.08);
+}
+.task-topic-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.task-topic-mini-card {
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 255, 255, 0.74);
+}
+.task-topic-mini-card strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--task-text);
+}
+.task-topic-mini-card span {
+  display: block;
+  margin-top: 6px;
+  color: var(--task-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.task-topic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .task-item {
   position: relative;
   padding: 12px 12px 12px 22px;
@@ -1265,6 +1460,9 @@ body {
   .task-detail-grid {
     grid-template-columns: 1fr;
   }
+  .task-topic-spotlight-grid {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 760px) {
   .task-page {
@@ -1289,6 +1487,17 @@ body {
   .planet-stage-strip,
   .planet-interior-grid {
     grid-template-columns: 1fr;
+  }
+  .task-topic-strip,
+  .task-topic-mini-grid {
+    grid-template-columns: 1fr;
+  }
+  .task-topic-head,
+  .task-item-title-row {
+    flex-direction: column;
+  }
+  .task-item-side {
+    text-align: left;
   }
   .planet-interior-scene,
   .planet-interior-canvas {
@@ -1344,6 +1553,112 @@ function formatTime(ts?: number): string {
 
 function sortTasks(tasks: TaskRecord[]): TaskRecord[] {
   return [...tasks].sort((left, right) => right.updatedAt - left.updatedAt);
+}
+
+type TopicGroup = {
+  key: string;
+  topicId?: string;
+  label: string;
+  subtitle: string;
+  tasks: TaskRecord[];
+  latestUpdatedAt: number;
+  counts: Record<TaskRecord['status'], number>;
+};
+
+function shortenMiddle(value: string, head = 16, tail = 8): string {
+  if (value.length <= head + tail + 1) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+function getTopicGroupKey(task: TaskRecord): string {
+  return task.topicId?.trim() || `standalone:${task.id}`;
+}
+
+function getTopicLabel(topicId?: string): string {
+  if (!topicId) return '独立任务';
+  const parts = topicId.split(':');
+  if (parts[0] === 'topic' && parts[1] === 'feishu') {
+    const threadPart = parts[3] || parts[parts.length - 1] || topicId;
+    return `Feishu 线程 ${shortenMiddle(threadPart, 10, 6)}`;
+  }
+  return shortenMiddle(topicId, 16, 8);
+}
+
+function getTopicSubtitle(topicId?: string): string {
+  if (!topicId) {
+    return '没有挂到 thread/topicId 的任务会以独立话题展示。';
+  }
+
+  const parts = topicId.split(':');
+  if (parts[0] === 'topic' && parts[1] === 'feishu') {
+    const chatPart = parts[2] ? shortenMiddle(parts[2], 8, 4) : 'unknown';
+    const threadPart = parts[3] ? shortenMiddle(parts[3], 10, 6) : 'root';
+    return `strict-by-thread · chat ${chatPart} · thread ${threadPart}`;
+  }
+
+  return `deterministic topic · ${shortenMiddle(topicId, 18, 10)}`;
+}
+
+function buildTopicGroups(tasks: TaskRecord[]): TopicGroup[] {
+  const buckets = new Map<string, TaskRecord[]>();
+
+  for (const task of sortTasks(tasks)) {
+    const key = getTopicGroupKey(task);
+    const bucket = buckets.get(key) ?? [];
+    bucket.push(task);
+    buckets.set(key, bucket);
+  }
+
+  return [...buckets.entries()]
+    .map(([key, bucket]) => {
+      const ordered = sortTasks(bucket);
+      const lead = ordered[0];
+      const counts: Record<TaskRecord['status'], number> = {
+        queued: 0,
+        running: 0,
+        waiting: 0,
+        done: 0,
+        failed: 0,
+      };
+
+      for (const task of ordered) {
+        counts[task.status] += 1;
+      }
+
+      return {
+        key,
+        topicId: lead?.topicId,
+        label: getTopicLabel(lead?.topicId),
+        subtitle: getTopicSubtitle(lead?.topicId),
+        tasks: ordered,
+        latestUpdatedAt: lead?.updatedAt ?? 0,
+        counts,
+      };
+    })
+    .sort((left, right) => {
+      if (left.latestUpdatedAt !== right.latestUpdatedAt) {
+        return right.latestUpdatedAt - left.latestUpdatedAt;
+      }
+      return right.tasks.length - left.tasks.length;
+    });
+}
+
+function prioritizeTask<T extends { id: string }>(items: T[], selectedId: string): T[] {
+  const index = items.findIndex((item) => item.id === selectedId);
+  if (index <= 0) return items;
+  const next = [...items];
+  const [selected] = next.splice(index, 1);
+  next.unshift(selected);
+  return next;
+}
+
+function buildEdgeLoadMap(edges: PlanetEdge[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const edge of edges) {
+    counts.set(edge.fromPlanetId, (counts.get(edge.fromPlanetId) ?? 0) + 1);
+    counts.set(edge.toPlanetId, (counts.get(edge.toPlanetId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function parseSelectedTaskId(pathname: string): string | null {
@@ -1765,6 +2080,9 @@ export default function TasksPage() {
     waiting: planets.filter((planet) => planet.status === 'waiting').length,
     done: planets.filter((planet) => planet.status === 'done').length,
   }), [planets]);
+  const topicGroups = useMemo(() => buildTopicGroups(tasks), [tasks]);
+  const featuredTopicGroups = useMemo(() => topicGroups.slice(0, 4), [topicGroups]);
+  const edgeLoadByTask = useMemo(() => buildEdgeLoadMap(edges), [edges]);
 
   const overviewViewport = useMemo(
     () => buildOverviewViewport(planets),
@@ -1780,27 +2098,32 @@ export default function TasksPage() {
     [planets],
   );
 
+  const selectedTopicGroup = useMemo(() => {
+    if (!selectedTask) return null;
+    return topicGroups.find((group) => group.tasks.some((task) => task.id === selectedTask.id)) ?? null;
+  }, [selectedTask, topicGroups]);
+
   const topicTasks = useMemo(() => {
-    if (!selectedTask) return [] as PlanetOverviewItem[];
+    if (!selectedTask) return [] as TaskRecord[];
+
+    if (selectedTopicGroup) {
+      return prioritizeTask(selectedTopicGroup.tasks, selectedTask.id).slice(0, 8);
+    }
+
     if (planetApiFallback || edges.length === 0) {
-      return tasks
-        .filter((task) => task.id !== selectedTask.id)
-        .slice(0, 6)
-        .map((task, index) => fallbackPlanetFromTask(task, index));
+      return [selectedTask, ...tasks.filter((task) => task.id !== selectedTask.id).slice(0, 5)];
     }
 
     const connectedIds = collectConnectedTopicIds(selectedTask.id, edges, 2);
-    if (connectedIds.length === 0) return [] as PlanetOverviewItem[];
+    if (connectedIds.length === 0) return [selectedTask];
 
-    const byId = new Map(planets.map((planet) => [planet.id, planet]));
+    const byId = new Map(tasks.map((task) => [task.id, task]));
     const collected = connectedIds
       .map((id) => byId.get(id))
-      .filter((item): item is PlanetOverviewItem => Boolean(item));
+      .filter((item): item is TaskRecord => Boolean(item));
 
-    return collected
-      .sort((left, right) => right.updatedAt - left.updatedAt)
-      .slice(0, 8);
-  }, [selectedTask?.id, planetApiFallback, edges, planets, tasks]);
+    return prioritizeTask(sortTasks([selectedTask, ...collected]), selectedTask.id).slice(0, 8);
+  }, [selectedTask, selectedTopicGroup, planetApiFallback, edges, tasks]);
 
   const interiorAgents = useMemo(() => {
     if (!selectedTask) return [];
@@ -2007,18 +2330,22 @@ export default function TasksPage() {
         />
       )
     ) : interiorLoading ? (
-      <div className="task-empty">Loading task detail...</div>
+      <div className="task-empty">正在加载任务详情…</div>
     ) : (
       <div className="task-empty">
-        Failed to load task detail{interiorError ? `: ${interiorError}` : '.'}
+        任务详情加载失败{interiorError ? `：${interiorError}` : '。'}
       </div>
     )
   ) : (
-    <div className="task-empty">{loading ? 'Loading task...' : 'No task selected.'}</div>
+    <div className="task-empty">{loading ? '正在加载任务…' : '还没有选中任务。'}</div>
   );
 
   const recentEvents = selectedTask ? [...selectedTask.events].slice(-8).reverse() : [];
   const overviewUse3d = overviewViewMode === '3d' && !disable3D && !linkMode && !selectedEdgeKey;
+  const selectedTaskEdgeCount = selectedTask ? (edgeLoadByTask.get(selectedTask.id) ?? 0) : 0;
+  const selectedTopicActiveCount = selectedTopicGroup
+    ? selectedTopicGroup.counts.running + selectedTopicGroup.counts.waiting
+    : 0;
 
   if (detailMode) {
     return (
@@ -2031,7 +2358,7 @@ export default function TasksPage() {
               className="task-tool-btn task-detail-back"
               onClick={() => navigate('/tasks')}
             >
-              Back to tasks
+              返回任务流
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {selectedTask ? (
@@ -2039,6 +2366,7 @@ export default function TasksPage() {
                   <span className={`badge ${selectedTask.status}`}>{getStatusLabel(selectedTask.status)}</span>
                   <span className="badge">{selectedTask.progress}%</span>
                   <span className="badge">{getKindLabel(selectedTask.kind)}</span>
+                  <span className="badge">{getTopicLabel(selectedTask.topicId)}</span>
                 </>
               ) : null}
               {interiorFallback ? <span className="task-status-badge info">Local detail</span> : null}
@@ -2049,20 +2377,22 @@ export default function TasksPage() {
             <>
               <section className="task-shell task-detail-hero" data-status={selectedTask.status}>
                 <div style={{ color: 'var(--task-dim)', fontSize: 12, letterSpacing: '0.12em', fontWeight: 700 }}>
-                  TASK DETAIL
+                  任务详情
                 </div>
                 <h1>{selectedTask.title}</h1>
                 <div className="task-detail-meta">
-                  {getKindLabel(selectedTask.kind)} · {getStatusLabel(selectedTask.status)} · Created {formatTime(selectedTask.createdAt)}
-                  {selectedTask.currentStageKey ? ` · Current stage: ${getStageKeyLabel(selectedTask.currentStageKey)}` : ''}
-                  {selectedTask.completedAt ? ` · Completed ${formatTime(selectedTask.completedAt)}` : ''}
+                  {getKindLabel(selectedTask.kind)} · {getStatusLabel(selectedTask.status)} · 创建于 {formatTime(selectedTask.createdAt)}
+                  {selectedTask.currentStageKey ? ` · 当前阶段 ${getStageKeyLabel(selectedTask.currentStageKey)}` : ''}
+                  {selectedTask.completedAt ? ` · 完成于 ${formatTime(selectedTask.completedAt)}` : ''}
                 </div>
                 <div className="task-progress" style={{ marginTop: 14 }}>
                   <span style={{ width: `${selectedTask.progress}%` }} />
                 </div>
                 <div className="task-badges" style={{ marginTop: 12 }}>
-                  <span className={`badge ${selectedTask.status}`}>progress {selectedTask.progress}%</span>
-                  {selectedTask.waitingFor ? <span className="badge waiting">waiting {selectedTask.waitingFor}</span> : null}
+                  <span className={`badge ${selectedTask.status}`}>进度 {selectedTask.progress}%</span>
+                  {selectedTask.waitingFor ? <span className="badge waiting">等待 {selectedTask.waitingFor}</span> : null}
+                  <span className="badge">{getTopicLabel(selectedTask.topicId)}</span>
+                  <span className="badge">{selectedTaskEdgeCount} 条关系</span>
                   <span className="badge">{selectedTask.id}</span>
                 </div>
                 {(selectedTask.summary || selectedTask.sourceText || recentEvents[0]?.message) ? (
@@ -2072,14 +2402,72 @@ export default function TasksPage() {
                 ) : null}
               </section>
 
+              <section className="task-shell task-topic-spotlight">
+                <div className="task-topic-spotlight-grid">
+                  <div>
+                    <div style={{ color: 'var(--task-dim)', fontSize: 12, letterSpacing: '0.12em', fontWeight: 700 }}>
+                      话题聚光灯
+                    </div>
+                    <h2>{selectedTopicGroup?.label || getTopicLabel(selectedTask.topicId)}</h2>
+                    <div className="task-topic-spotlight-meta">
+                      {selectedTopicGroup?.subtitle || getTopicSubtitle(selectedTask.topicId)}
+                    </div>
+                    <div className="task-topic-spotlight-pills" style={{ marginTop: 12 }}>
+                      <span className="task-overview-pill"><strong>{selectedTopicGroup?.tasks.length ?? 1}</strong> 个任务挂在这个话题下</span>
+                      <span className="task-overview-pill"><strong>{selectedTopicActiveCount}</strong> 个任务仍在推进或等待确认</span>
+                      <span className="task-overview-pill"><strong>{selectedTaskEdgeCount}</strong> 条星球关系直接连到当前任务</span>
+                      <span className="task-overview-pill">
+                        {selectedTask.topicId ? shortenMiddle(selectedTask.topicId, 20, 10) : '独立任务'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="task-topic-spotlight-aside">
+                    <div className="task-topic-mini-grid">
+                      <div className="task-topic-mini-card">
+                        <strong>{selectedTopicGroup?.counts.running ?? 0}</strong>
+                        <span>自动推进中</span>
+                      </div>
+                      <div className="task-topic-mini-card">
+                        <strong>{selectedTopicGroup?.counts.waiting ?? 0}</strong>
+                        <span>等待你确认</span>
+                      </div>
+                      <div className="task-topic-mini-card">
+                        <strong>{selectedTopicGroup?.counts.done ?? 0}</strong>
+                        <span>已经沉淀</span>
+                      </div>
+                      <div className="task-topic-mini-card">
+                        <strong>{selectedTopicGroup?.counts.failed ?? 0}</strong>
+                        <span>需要恢复处理</span>
+                      </div>
+                    </div>
+                    <div className="task-topic-actions">
+                      <button
+                        type="button"
+                        className="task-tool-btn"
+                        onClick={() => navigate('/tasks')}
+                      >
+                        回到任务流
+                      </button>
+                      <button
+                        type="button"
+                        className="task-tool-btn"
+                        onClick={() => navigate(`/universe?focus=${encodeURIComponent(selectedTask.id)}`)}
+                      >
+                        打开话题星图
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               <div className="task-detail-grid">
                 <main className="task-shell task-detail-main">
                     <div className="task-main-head">
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
                         <div>
-                          <h1 style={{ margin: 0, fontSize: 18 }}>Task detail</h1>
+                          <h1 style={{ margin: 0, fontSize: 18 }}>任务内部视图</h1>
                         <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
-                          This page is optimized for the Feishu progress card and focuses on one task.
+                          这个视图围绕当前任务展开，同时把同一话题下的上下文也抬到了顶部，方便快速切换。
                         </div>
                       </div>
                       <div className="task-view-switch">
@@ -2090,14 +2478,14 @@ export default function TasksPage() {
                           disabled={disable3D}
                           title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
                         >
-                          Workspace
+                          立体工位
                         </button>
                         <button
                           type="button"
                           className={`task-tool-btn ${interiorViewMode === '2d' ? 'active' : ''}`}
                           onClick={() => setInteriorViewMode('2d')}
                         >
-                          2D Map
+                          2D 拓扑
                         </button>
                       </div>
                     </div>
@@ -2110,7 +2498,7 @@ export default function TasksPage() {
 	                <aside className="task-detail-side">
 	                  <section className="task-shell">
 	                    <div className="task-panel-head">
-	                      <h1 style={{ margin: 0, fontSize: 16 }}>Stage progress</h1>
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>阶段进度</h1>
 	                    </div>
                     <div className="task-panel-body">
                       <div className="stage-grid">
@@ -2127,7 +2515,7 @@ export default function TasksPage() {
 
 	                  <section className="task-shell">
 	                    <div className="task-panel-head">
-	                      <h1 style={{ margin: 0, fontSize: 16 }}>Robots</h1>
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>机器人</h1>
 	                    </div>
 	                    <div className="task-panel-body">
 	                      {interiorAgents.length > 0 ? (
@@ -2157,7 +2545,7 @@ export default function TasksPage() {
 
 	                  <section className="task-shell">
 	                    <div className="task-panel-head">
-	                      <h1 style={{ margin: 0, fontSize: 16 }}>Recent events</h1>
+	                      <h1 style={{ margin: 0, fontSize: 16 }}>最近事件</h1>
 	                    </div>
                     <div className="task-panel-body">
                       {recentEvents.length > 0 ? (
@@ -2177,32 +2565,57 @@ export default function TasksPage() {
 	                    </div>
 	                  </section>
 
-	                  <section className="task-shell">
-	                    <div className="task-panel-head">
-	                      <h1 style={{ margin: 0, fontSize: 16 }}>
-	                        Topic tasks{topicTasks.length > 0 ? ` (${topicTasks.length})` : ''}
-	                      </h1>
-	                    </div>
-	                    <div className="task-panel-body">
-	                      {topicTasks.length > 0 ? (
-	                        <div className="task-detail-tasklist">
-	                          {topicTasks.map((task) => (
-	                            <button
-	                              key={task.id}
-	                              type="button"
-	                              className="task-item"
-	                              onClick={() => navigate(`/tasks/${task.id}`)}
-	                            >
-	                              <div className="task-title">{task.title}</div>
-	                              <div className="task-meta">
-	                                {getKindLabel(task.kind)} · {getStatusLabel(task.status)} · {task.progress}%
-	                              </div>
-	                            </button>
-	                          ))}
-	                        </div>
-	                      ) : (
-	                        <div className="task-empty">
-	                          No topic links yet. Create edges in the Tasks universe view or reference previous tasks in your prompt.
+                  <section className="task-shell">
+                    <div className="task-panel-head">
+                      <h1 style={{ margin: 0, fontSize: 16 }}>
+                        同话题任务{topicTasks.length > 0 ? ` (${topicTasks.length})` : ''}
+                      </h1>
+                    </div>
+                    <div className="task-panel-body">
+                      {topicTasks.length > 0 ? (
+                        <div className="task-detail-tasklist">
+                          {topicTasks.map((task) => (
+                            <button
+                              key={task.id}
+                              type="button"
+                              className={`task-item ${task.id === selectedTask.id ? 'active' : ''}`}
+                              data-status={task.status}
+                              onClick={() => navigate(`/tasks/${task.id}`)}
+                            >
+                              <div className="task-item-topline">
+                                <div className="task-item-topline-left">
+                                  <span className="task-item-kicker">
+                                    {task.id === selectedTask.id ? '当前任务' : '同话题'}
+                                  </span>
+                                  <span className="task-topic-code">
+                                    {task.topicId ? shortenMiddle(task.topicId, 16, 8) : '独立任务'}
+                                  </span>
+                                </div>
+                                <div className="task-item-side">
+                                  {formatTime(task.updatedAt)}
+                                </div>
+                              </div>
+                              <div className="task-title">{task.title}</div>
+                              <div className="task-meta">
+                                {getKindLabel(task.kind)} · {getStatusLabel(task.status)} · {task.progress}%
+                                {task.currentStageKey ? ` · ${getStageKeyLabel(task.currentStageKey)}` : ''}
+                              </div>
+                              {task.summary || task.sourceText ? (
+                                <div className="task-item-summary">
+                                  {task.summary || task.sourceText}
+                                </div>
+                              ) : null}
+                              <div className="task-badges">
+                                <span className={`badge ${task.status}`}>{task.progress}%</span>
+                                {task.waitingFor ? <span className="badge waiting">等待：{task.waitingFor}</span> : null}
+                                <span className="badge">{edgeLoadByTask.get(task.id) ?? 0} 条关系</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="task-empty">
+	                          这个任务还没有形成更多话题关联。你可以在任务宇宙视图里手动连线，或继续围绕同一线程追问。
 	                        </div>
 	                      )}
 	                    </div>
@@ -2212,9 +2625,9 @@ export default function TasksPage() {
             </>
           ) : (
             <section className="task-shell task-detail-hero">
-              <h1 style={{ margin: 0, fontSize: 24 }}>Task not found</h1>
+              <h1 style={{ margin: 0, fontSize: 24 }}>任务不存在</h1>
               <div className="task-detail-meta">
-                {loading ? 'Trying to load task detail...' : 'This task link may be expired, or the task id is invalid.'}
+                {loading ? '正在尝试加载任务详情…' : '这个任务链接可能已经失效，或者任务 id 不存在。'}
               </div>
             </section>
           )}
@@ -2445,9 +2858,9 @@ export default function TasksPage() {
 
         <aside className="task-shell task-panel">
           <div className="task-panel-head">
-            <h1 style={{ margin: 0, fontSize: 18 }}>任务流</h1>
+            <h1 style={{ margin: 0, fontSize: 18 }}>话题任务流</h1>
             <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
-              列表视图仍然保留，方便快速浏览、复制信息和在降级模式下继续导航。
+              列表不再只按时间平铺，而是优先按 strict-by-thread 的 topic 聚合，方便你一眼看到同一话题下的任务簇。
             </div>
           </div>
           <div className="task-panel-body">
@@ -2455,26 +2868,95 @@ export default function TasksPage() {
             {!error && tasks.length === 0 && !loading ? (
               <div className="task-empty">还没有任务。发起一次扫描、流水线或飞书复杂请求后，这里就会出现记录。</div>
             ) : null}
-            <div className="task-list">
-              {tasks.map((task) => (
-                <button
-                  key={task.id}
-                  className={`task-item ${task.id === selectedTask?.id ? 'active' : ''}`}
-                  data-status={task.status}
-                  type="button"
-                  onClick={() => navigate(`/tasks/${task.id}`)}
-                >
-                  <div className="task-title">{task.title}</div>
-                  <div className="task-meta">
-                    {getKindLabel(task.kind)} · {getStatusLabel(task.status)} · 更新于 {formatTime(task.updatedAt)}
-                    {task.currentStageKey ? ` · 阶段 ${getStageKeyLabel(task.currentStageKey)}` : ''}
+            {featuredTopicGroups.length > 0 ? (
+              <div className="task-topic-strip">
+                {featuredTopicGroups.map((group) => {
+                  const active = Boolean(selectedTopicGroup && selectedTopicGroup.key === group.key);
+                  const focusTask = group.tasks[0];
+                  return (
+                    <button
+                      key={group.key}
+                      type="button"
+                      className={`task-topic-card ${active ? 'active' : ''}`}
+                      onClick={() => navigate(`/tasks/${focusTask.id}`)}
+                    >
+                      <div className="task-topic-card-top">
+                        <span className={`task-status-badge ${group.counts.waiting > 0 ? 'warn' : 'info'}`}>
+                          {group.topicId ? '线程话题' : '独立任务'}
+                        </span>
+                        <span className="badge">{group.tasks.length} 个任务</span>
+                      </div>
+                      <div className="task-topic-card-title">{group.label}</div>
+                      <div className="task-topic-card-meta">{group.subtitle}</div>
+                      <div className="task-topic-card-stats" style={{ marginTop: 10 }}>
+                        <span className="badge running">{group.counts.running} 进行中</span>
+                        <span className="badge waiting">{group.counts.waiting} 等待中</span>
+                        <span className="badge done">{group.counts.done} 已完成</span>
+                        {group.counts.failed > 0 ? <span className="badge failed">{group.counts.failed} 失败</span> : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <div className="task-list task-topic-groups">
+              {topicGroups.map((group) => (
+                <section key={group.key} className="task-topic-section">
+                  <div className="task-topic-head">
+                    <div className="task-topic-head-copy">
+                      <div className="task-overview-kicker">话题簇</div>
+                      <div className="task-topic-section-title">{group.label}</div>
+                      <div className="task-topic-section-meta">
+                        {group.subtitle} · 最近更新 {formatTime(group.latestUpdatedAt)}
+                      </div>
+                    </div>
+                    <div className="task-topic-head-stats">
+                      <span className="task-topic-code">
+                        {group.topicId ? shortenMiddle(group.topicId, 18, 10) : '独立任务'}
+                      </span>
+                      <span className="badge">{group.tasks.length} 个任务</span>
+                      <span className="badge running">{group.counts.running} 进行中</span>
+                      {group.counts.waiting > 0 ? <span className="badge waiting">{group.counts.waiting} 等待中</span> : null}
+                    </div>
                   </div>
-                  <div className="task-progress"><span style={{ width: `${task.progress}%` }} /></div>
-                  <div className="task-badges">
-                    <span className={`badge ${task.status}`}>{task.progress}%</span>
-                    {task.waitingFor ? <span className="badge waiting">等待：{task.waitingFor}</span> : null}
+                  <div className="task-topic-tasklist">
+                    {group.tasks.map((task) => (
+                      <button
+                        key={task.id}
+                        className={`task-item ${task.id === selectedTask?.id ? 'active' : ''}`}
+                        data-status={task.status}
+                        type="button"
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                      >
+                        <div className="task-item-topline">
+                          <div className="task-item-topline-left">
+                            <span className="task-item-kicker">{task.id === group.tasks[0]?.id ? '主任务' : '子任务'}</span>
+                            <span className="task-topic-code">{getTopicLabel(task.topicId)}</span>
+                          </div>
+                          <div className="task-item-side">更新于 {formatTime(task.updatedAt)}</div>
+                        </div>
+                        <div className="task-item-title-row">
+                          <div className="task-title">{task.title}</div>
+                          <div className="task-item-side">
+                            {edgeLoadByTask.get(task.id) ?? 0} 条关系
+                          </div>
+                        </div>
+                        <div className="task-meta">
+                          {getKindLabel(task.kind)} · {getStatusLabel(task.status)}
+                          {task.currentStageKey ? ` · 阶段 ${getStageKeyLabel(task.currentStageKey)}` : ''}
+                        </div>
+                        {task.summary || task.sourceText ? (
+                          <div className="task-item-summary">{task.summary || task.sourceText}</div>
+                        ) : null}
+                        <div className="task-progress"><span style={{ width: `${task.progress}%` }} /></div>
+                        <div className="task-badges">
+                          <span className={`badge ${task.status}`}>{task.progress}%</span>
+                          {task.waitingFor ? <span className="badge waiting">等待：{task.waitingFor}</span> : null}
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                </button>
+                </section>
               ))}
             </div>
           </div>

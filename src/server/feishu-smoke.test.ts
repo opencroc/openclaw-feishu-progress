@@ -95,4 +95,52 @@ describe('registerFeishuSmokeRoutes', () => {
     ]);
     expect(messages.filter((message) => message.kind === 'task-progress').map((message) => message.progress)).toEqual([22, 48, 76, 92]);
   });
+
+  it('supports an explicit failed smoke path after staged progress updates', async () => {
+    vi.useFakeTimers();
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: `om_${send.mock.calls.length + 1}` }));
+    const { app, office } = createApp(send);
+
+    const resPromise = app.inject({
+      method: 'POST',
+      url: '/api/feishu/smoke/progress',
+      payload: {
+        chatId: 'oc_smoke_3',
+        requestId: 'om_smoke_3',
+        title: 'Smoke failure',
+        outcome: 'failed',
+        failureMessage: 'Smoke failed after staged progress',
+      },
+    });
+
+    await vi.runAllTimersAsync();
+    const res = await resPromise;
+
+    expect(res.statusCode).toBe(200);
+    const payload = res.json();
+    await vi.advanceTimersByTimeAsync(6_500);
+
+    const task = office.getTask(payload.taskId);
+    expect(task?.status).toBe('failed');
+    expect(task?.currentStageKey).toBe('finalize');
+    expect(task?.stages.map((stage) => [stage.key, stage.status])).toEqual([
+      ['receive', 'done'],
+      ['understand', 'done'],
+      ['gather', 'done'],
+      ['generate', 'done'],
+      ['finalize', 'failed'],
+    ]);
+    expect(task?.events.at(-1)?.message).toBe('Smoke failed after staged progress');
+    expect(send).toHaveBeenCalledTimes(6);
+    const messages = send.mock.calls.map(([message]) => message);
+    expect(messages.map((message) => message.kind)).toEqual([
+      'task-ack',
+      'task-progress',
+      'task-progress',
+      'task-progress',
+      'task-progress',
+      'task-failed',
+    ]);
+    expect(messages.filter((message) => message.kind === 'task-progress').map((message) => message.progress)).toEqual([22, 48, 76, 92]);
+  });
 });

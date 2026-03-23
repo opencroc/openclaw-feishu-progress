@@ -6,8 +6,19 @@ function wait(ms: number): Promise<void> {
 }
 
 export function registerFeishuSmokeRoutes(app: FastifyInstance, office: CrocOffice): void {
-  app.post<{ Body: { chatId: string; requestId?: string; title?: string; mode?: 'text' | 'card' } }>('/api/feishu/smoke/progress', async (req, reply) => {
+  app.post<{
+    Body: {
+      chatId: string;
+      requestId?: string;
+      title?: string;
+      mode?: 'text' | 'card';
+      outcome?: 'done' | 'failed';
+      failureMessage?: string;
+    };
+  }>('/api/feishu/smoke/progress', async (req, reply) => {
     const title = req.body.title || 'Feishu progress smoke test';
+    const outcome = req.body.outcome === 'failed' ? 'failed' : 'done';
+    const failureMessage = req.body.failureMessage || 'Smoke progress flow failed after staged updates';
     const task = office.createChatTask(title, title);
 
     office.bindTaskToFeishu(task.id, {
@@ -45,6 +56,10 @@ export function registerFeishuSmokeRoutes(app: FastifyInstance, office: CrocOffi
         await wait(1200);
         office.markTaskRunning('finalize', 'Closing smoke task and flushing final update', 92);
         await wait(1200);
+        if (outcome === 'failed') {
+          office.failTask(failureMessage);
+          return;
+        }
         office.finishTask('Smoke progress flow completed successfully');
       } finally {
         office.activateTask(null);
@@ -58,7 +73,9 @@ export function registerFeishuSmokeRoutes(app: FastifyInstance, office: CrocOffi
     return {
       ok: true,
       taskId: task.id,
-      message: 'Feishu smoke progress task started',
+      message: outcome === 'failed'
+        ? 'Feishu smoke progress failure task started'
+        : 'Feishu smoke progress task started',
     };
   });
 }

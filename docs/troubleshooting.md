@@ -1,5 +1,7 @@
 # Troubleshooting
 
+完整的鉴权配置、OpenClaw relay 接入、systemd 部署和 smoke 验收步骤见 [飞书鉴权与部署](./feishu-auth-deployment.md)。
+
 ## 配置改了但没生效
 
 - 如果你改的是本项目（OpenClaw Feishu Progress / Studio）配置：需要重启正在运行的服务进程。
