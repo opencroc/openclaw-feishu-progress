@@ -3,14 +3,8 @@ import type { CrocOffice } from '../croc-office.js';
 import type { ExecutionRunMode } from '../../execution/types.js';
 import type { TaskDecisionPrompt } from '../task-store.js';
 import type { FeishuProgressBridge } from '../feishu-bridge.js';
+import { submitTaskDecision } from '../task-decision.js';
 import { computeFeishuTopicId } from '../topic.js';
-
-function formatDecisionDetail(optionLabel: string | undefined, freeText: string | undefined): string {
-  if (optionLabel && freeText) return `Decision received: ${optionLabel} — ${freeText}`;
-  if (optionLabel) return `Decision received: ${optionLabel}`;
-  if (freeText) return `Decision received: ${freeText}`;
-  return 'Decision received';
-}
 
 export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice, feishuBridge: FeishuProgressBridge | null = null): void {
   // GET /api/agents — list all croc agents
@@ -195,58 +189,16 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice, fe
 
   // POST /api/tasks/:id/decision — submit a waiting-state decision and resume task progress
   app.post<{ Params: { id: string }; Body: { optionId?: string; freeText?: string; detail?: string; progress?: number } }>('/api/tasks/:id/decision', async (req, reply) => {
-    const task = office.getTask(req.params.id);
-    if (!task) {
-      reply.code(404).send({ error: 'Task not found' });
+    const result = await submitTaskDecision(office, req.params.id, req.body);
+    if (!result.ok) {
+      reply.code(result.statusCode).send({ error: result.error });
       return;
     }
-
-    if (task.status !== 'waiting') {
-      reply.code(409).send({ error: 'Task is not waiting for a decision' });
-      return;
-    }
-
-    const optionId = req.body.optionId?.trim();
-    const freeText = req.body.freeText?.trim();
-    const prompt = task.decision;
-    const selectedOption = optionId
-      ? prompt?.options.find((option) => option.id === optionId)
-      : undefined;
-
-    if (optionId && !selectedOption) {
-      reply.code(400).send({ error: 'Invalid decision option' });
-      return;
-    }
-
-    if (!optionId && !freeText) {
-      reply.code(400).send({ error: 'optionId or freeText is required' });
-      return;
-    }
-
-    if (freeText && prompt && prompt.allowFreeText !== true && !optionId) {
-      reply.code(400).send({ error: 'This decision does not allow free text only submissions' });
-      return;
-    }
-
-    if (freeText && prompt && prompt.allowFreeText !== true && optionId) {
-      reply.code(400).send({ error: 'This decision does not allow free text notes' });
-      return;
-    }
-
-    const detail = req.body.detail?.trim() || formatDecisionDetail(selectedOption?.label, freeText);
-    const updated = await office.submitTaskDecision(task.id, {
-      detail,
-      progress: req.body.progress ?? task.progress,
-    });
 
     return {
       ok: true,
-      decision: {
-        optionId: selectedOption?.id,
-        optionLabel: selectedOption?.label,
-        freeText,
-      },
-      task: updated,
+      decision: result.decision,
+      task: result.task,
     };
   });
 

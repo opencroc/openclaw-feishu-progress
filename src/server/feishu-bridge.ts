@@ -238,6 +238,29 @@ function createTaskCard(message: FeishuOutboundMessage): FeishuCardPayload {
         content: `**待确认**：${message.decision.prompt}\n${message.decision.options.map((opt) => `${opt.id}. ${opt.label}${opt.description ? ` - ${opt.description}` : ''}`).join('\n')}`,
       },
     });
+
+    for (const [index, option] of message.decision.options.entries()) {
+      elements.push({
+        tag: 'button',
+        text: {
+          tag: 'plain_text',
+          content: `${option.id}. ${option.label}`,
+        },
+        type: index === 0 ? 'primary' : 'default',
+        width: 'fill',
+        behaviors: [
+          {
+            type: 'callback',
+            value: {
+              kind: 'task-decision',
+              taskId: message.taskId,
+              optionId: option.id,
+              optionLabel: option.label,
+            },
+          },
+        ],
+      });
+    }
   }
 
   if (message.summary) {

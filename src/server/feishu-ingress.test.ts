@@ -19,6 +19,21 @@ function createApp(feishuConfig: FeishuBridgeConfig = {}, dedupStore?: FileFeish
   return { app, office };
 }
 
+function createWaitingTask(office: CrocOffice) {
+  const task = office.createChatTask('Decision task');
+  office.activateTask(task.id);
+  office.markTaskRunning('receive', 'Task accepted', 12);
+  office.waitOnTask('product direction', 'Need a direction choice', 68, {
+    prompt: 'Choose a path',
+    options: [
+      { id: 'continue', label: '继续执行' },
+      { id: 'report', label: '只生成报告' },
+    ],
+  });
+  office.activateTask(null);
+  return task;
+}
+
 describe('registerFeishuIngressRoutes', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -180,6 +195,106 @@ describe('registerFeishuIngressRoutes', () => {
     expect(dispatchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('submits a waiting decision from a Feishu card callback', async () => {
+    const { app, office } = createApp();
+    const task = createWaitingTask(office);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/webhook',
+      payload: {
+        schema: '2.0',
+        header: { event_type: 'card.action.trigger', event_id: 'evt_card_decision_1' },
+        event: {
+          action: {
+            value: {
+              kind: 'task-decision',
+              taskId: task.id,
+              optionId: 'continue',
+              optionLabel: '继续执行',
+            },
+          },
+        },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      ok: true,
+      result: {
+        kind: 'task-decision',
+        taskId: task.id,
+        accepted: true,
+        decision: {
+          optionId: 'continue',
+          optionLabel: '继续执行',
+        },
+      },
+      toast: {
+        type: 'success',
+        content: '已确认：继续执行',
+      },
+    });
+
+    const updated = office.getTask(task.id);
+    expect(updated?.status).toBe('running');
+    expect(updated?.waitingFor).toBeUndefined();
+    expect(updated?.decision).toBeUndefined();
+    expect(updated?.events.at(-1)?.message).toContain('Decision received: 继续执行');
+  });
+
+  it('returns an idempotent toast when the same decision is clicked again', async () => {
+    const { app, office } = createApp();
+    const task = createWaitingTask(office);
+    const payload = {
+      schema: '2.0',
+      event: {
+        action: {
+          value: {
+            kind: 'task-decision',
+            taskId: task.id,
+            optionId: 'continue',
+            optionLabel: '继续执行',
+          },
+        },
+      },
+    };
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/webhook',
+      payload: {
+        ...payload,
+        header: { event_type: 'card.action.trigger', event_id: 'evt_card_decision_2a' },
+      },
+    });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/webhook',
+      payload: {
+        ...payload,
+        header: { event_type: 'card.action.trigger', event_id: 'evt_card_decision_2b' },
+      },
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toMatchObject({
+      ok: true,
+      result: {
+        kind: 'task-decision',
+        taskId: task.id,
+        accepted: true,
+        alreadyResolved: true,
+      },
+      toast: {
+        type: 'info',
+      },
+    });
+    expect(second.json().toast.content).toContain('该决策已处理');
+    expect(second.json().toast.content).toContain('继续执行');
+  });
+
   it('accepts signed webhook events when encrypt key and verification token are configured', async () => {
     const feishuConfig: FeishuBridgeConfig = {
       webhookEncryptKey: 'webhook-encrypt-key',
@@ -213,6 +328,57 @@ describe('registerFeishuIngressRoutes', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().ok).toBe(true);
     expect(office.listTasks(10)).toHaveLength(1);
+  });
+
+  it('accepts signed card callbacks when encrypt key and verification token are configured', async () => {
+    const feishuConfig: FeishuBridgeConfig = {
+      webhookEncryptKey: 'webhook-encrypt-key',
+      webhookVerificationToken: 'verification-token',
+    };
+    const { app, office } = createApp(feishuConfig);
+    const task = createWaitingTask(office);
+    const payload = {
+      schema: '2.0',
+      header: {
+        event_type: 'card.action.trigger',
+        event_id: 'evt_card_signed',
+        token: 'verification-token',
+      },
+      event: {
+        action: {
+          value: {
+            kind: 'task-decision',
+            taskId: task.id,
+            optionId: 'continue',
+            optionLabel: '继续执行',
+          },
+        },
+      },
+    };
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/webhook',
+      headers: buildFeishuWebhookSignatureHeaders({
+        encryptKey: feishuConfig.webhookEncryptKey!,
+        body: payload,
+      }),
+      payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      ok: true,
+      result: {
+        kind: 'task-decision',
+        taskId: task.id,
+        accepted: true,
+      },
+      toast: {
+        type: 'success',
+      },
+    });
+    expect(office.getTask(task.id)?.status).toBe('running');
   });
 
   it('rejects webhook events with an invalid verification token', async () => {

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from './croc-office.js';
 import type { FeishuBridgeConfig, FeishuProgressBridge } from './feishu-bridge.js';
 import type { FeishuWebhookDedupStore } from './feishu-webhook-dedup-store.js';
+import { describeTaskDecisionAlreadyProcessed, submitTaskDecision } from './task-decision.js';
 import {
   isComplexRequest,
   startComplexFeishuChatTask,
@@ -43,6 +44,9 @@ interface FeishuEventBody {
   event?: {
     sender?: FeishuEventSender;
     message?: FeishuEventMessage;
+    action?: {
+      value?: unknown;
+    };
   };
 }
 
@@ -55,6 +59,34 @@ interface DuplicateResult {
 interface PassThroughResult {
   kind: 'pass-through';
   reason: string;
+}
+
+interface FeishuCardActionValue {
+  kind?: string;
+  taskId?: string;
+  optionId?: string;
+  optionLabel?: string;
+  freeText?: string;
+  detail?: string;
+  progress?: number;
+}
+
+interface FeishuWebhookToast {
+  type: 'success' | 'info' | 'warning' | 'error';
+  content: string;
+}
+
+interface FeishuWebhookActionResult {
+  kind: 'task-decision';
+  taskId?: string;
+  accepted: boolean;
+  alreadyResolved?: boolean;
+  decision?: {
+    optionId?: string;
+    optionLabel?: string;
+    freeText?: string;
+  };
+  reason?: string;
 }
 
 interface RegisterFeishuIngressOptions {
@@ -81,6 +113,46 @@ function createDedupKey(body: FeishuEventBody): string | undefined {
   if (messageId) return `message:${messageId}`;
 
   return undefined;
+}
+
+function parseCardActionValue(raw: unknown): FeishuCardActionValue | undefined {
+  const candidate = typeof raw === 'string'
+    ? (() => {
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return undefined;
+        }
+      })()
+    : raw;
+
+  if (!candidate || typeof candidate !== 'object') return undefined;
+
+  const record = candidate as Record<string, unknown>;
+  const progress = typeof record.progress === 'number'
+    ? record.progress
+    : typeof record.progress === 'string' && record.progress.trim()
+      ? Number(record.progress)
+      : undefined;
+
+  return {
+    kind: typeof record.kind === 'string' ? record.kind.trim() : undefined,
+    taskId: typeof record.taskId === 'string' ? record.taskId.trim() : undefined,
+    optionId: typeof record.optionId === 'string' ? record.optionId.trim() : undefined,
+    optionLabel: typeof record.optionLabel === 'string' ? record.optionLabel.trim() : undefined,
+    freeText: typeof record.freeText === 'string' ? record.freeText.trim() : undefined,
+    detail: typeof record.detail === 'string' ? record.detail.trim() : undefined,
+    progress: Number.isFinite(progress) ? progress : undefined,
+  };
+}
+
+function callbackToast(type: FeishuWebhookToast['type'], content: string): { toast: FeishuWebhookToast } {
+  return {
+    toast: {
+      type,
+      content,
+    },
+  };
 }
 
 export function registerFeishuIngressRoutes(
@@ -111,6 +183,114 @@ export function registerFeishuIngressRoutes(
     }
 
     const eventType = 'header' in body ? body.header?.event_type : undefined;
+    if (eventType === 'card.action.trigger') {
+      const dedupKey = createDedupKey(body as FeishuEventBody);
+      if (dedupKey) {
+        const now = Date.now();
+        if (dedupStore.has(dedupKey, now)) {
+          const result: DuplicateResult = {
+            ok: true,
+            ignored: true,
+            reason: `Duplicate Feishu delivery ignored: ${dedupKey}`,
+          };
+          return result;
+        }
+        dedupStore.remember(dedupKey, now + dedupTtlMs, now);
+      }
+
+      const actionValue = parseCardActionValue((body as FeishuEventBody).event?.action?.value);
+      if (!actionValue || actionValue.kind !== 'task-decision') {
+        const result: FeishuWebhookActionResult = {
+          kind: 'task-decision',
+          accepted: false,
+          reason: 'Unsupported card callback payload',
+        };
+        return {
+          ok: true,
+          result,
+          ...callbackToast('warning', '暂不支持这个卡片操作'),
+        };
+      }
+
+      if (!actionValue.taskId) {
+        const result: FeishuWebhookActionResult = {
+          kind: 'task-decision',
+          accepted: false,
+          reason: 'Missing taskId in card callback payload',
+        };
+        return {
+          ok: true,
+          result,
+          ...callbackToast('error', '缺少任务 ID，无法处理该操作'),
+        };
+      }
+
+      const decisionResult = await submitTaskDecision(office, actionValue.taskId, {
+        optionId: actionValue.optionId,
+        freeText: actionValue.freeText,
+        detail: actionValue.detail,
+        progress: actionValue.progress,
+      }, {
+        idempotentIfNotWaiting: true,
+      });
+
+      if (!decisionResult.ok) {
+        const result: FeishuWebhookActionResult = {
+          kind: 'task-decision',
+          taskId: actionValue.taskId,
+          accepted: false,
+          reason: decisionResult.error,
+        };
+        return {
+          ok: true,
+          result,
+          ...callbackToast('error', decisionResult.error),
+        };
+      }
+
+      if (decisionResult.alreadyResolved) {
+        const result: FeishuWebhookActionResult = {
+          kind: 'task-decision',
+          taskId: actionValue.taskId,
+          accepted: true,
+          alreadyResolved: true,
+          decision: {
+            ...decisionResult.decision,
+            optionLabel: decisionResult.decision.optionLabel ?? actionValue.optionLabel,
+          },
+        };
+        return {
+          ok: true,
+          result,
+          ...callbackToast(
+            'info',
+            describeTaskDecisionAlreadyProcessed(decisionResult.task, {
+              ...decisionResult.decision,
+              optionLabel: decisionResult.decision.optionLabel ?? actionValue.optionLabel,
+            }),
+          ),
+        };
+      }
+
+      const resolvedDecision = {
+        ...decisionResult.decision,
+        optionLabel: decisionResult.decision.optionLabel ?? actionValue.optionLabel,
+      };
+
+      const successLabel = resolvedDecision.optionLabel || resolvedDecision.freeText || resolvedDecision.optionId || '已确认';
+      const result: FeishuWebhookActionResult = {
+        kind: 'task-decision',
+        taskId: actionValue.taskId,
+        accepted: true,
+        decision: resolvedDecision,
+      };
+      return {
+        ok: true,
+        result,
+        ...callbackToast('success', `已确认：${successLabel}`),
+      };
+    }
+
     if (eventType !== 'im.message.receive_v1') {
       return {
         ok: true,

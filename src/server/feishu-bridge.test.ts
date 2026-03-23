@@ -187,6 +187,14 @@ describe('FeishuProgressBridge', () => {
     expect((sent[1]?.card as any).header.title.content).toContain('任务等待确认');
     expect((sent[2]?.card as any).header.title.content).toContain('任务已完成');
     expect((sent[0]?.card as any).body.elements.some((element: any) => element.tag === 'button')).toBe(true);
+    const decisionButton = (sent[1]?.card as any).body.elements.find((element: any) => element.behaviors?.[0]?.type === 'callback');
+    expect(decisionButton).toBeDefined();
+    expect(decisionButton.behaviors[0].value).toEqual({
+      kind: 'task-decision',
+      taskId: 'task_123',
+      optionId: '1',
+      optionLabel: '继续分析',
+    });
     expect((sent[2]?.card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(true);
   });
 
