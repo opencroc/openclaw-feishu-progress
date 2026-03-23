@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { CrocOffice } from './croc-office.js';
-import { FeishuProgressBridge, type FeishuOutboundMessage } from './feishu-bridge.js';
+import { FeishuProgressBridge, type FeishuBridgeConfig, type FeishuOutboundMessage } from './feishu-bridge.js';
 import { registerFeishuRelayRoutes } from './feishu-relay.js';
+import { buildFeishuRelayAuthHeaders } from './relay-auth.js';
 
-function createApp(send: (message: FeishuOutboundMessage) => Promise<unknown>) {
+function createApp(send: (message: FeishuOutboundMessage) => Promise<unknown>, feishuConfig: FeishuBridgeConfig = {}) {
   const app = Fastify();
-  const office = new CrocOffice({ backendRoot: '.', feishu: {} }, process.cwd());
-  const feishuBridge = new FeishuProgressBridge({ send }, { baseTaskUrl: 'http://localhost:3333' });
+  const office = new CrocOffice({ backendRoot: '.', feishu: feishuConfig }, process.cwd());
+  const feishuBridge = new FeishuProgressBridge({ send }, { baseTaskUrl: 'http://localhost:3333', ...feishuConfig });
   office.setFeishuBridge(feishuBridge);
-  registerFeishuRelayRoutes(app, office, feishuBridge);
+  registerFeishuRelayRoutes(app, office, feishuBridge, feishuConfig);
   return { app, office };
 }
 
@@ -163,5 +164,171 @@ describe('registerFeishuRelayRoutes', () => {
     const task = office.getTask(payload.taskId);
     expect(task?.status).toBe('failed');
     expect(task?.currentStageKey).toBe('receive');
+  });
+
+  it('requires relay auth headers when relaySecret is configured', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: 'om_ack_1' }));
+    const { app } = createApp(send, { relaySecret: 'relay-secret' });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay',
+      payload: {
+        chatId: 'oc_relay_auth_1',
+        requestId: 'om_relay_auth_1',
+        text: '帮我分析 OpenCroc 的平台定位和下一步 roadmap',
+      },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({
+      ok: false,
+      error: 'Missing relay auth headers',
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('accepts signed relay requests when relaySecret is configured', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: 'om_ack_1' }));
+    const { app, office } = createApp(send, { relaySecret: 'relay-secret' });
+    const payload = {
+      chatId: 'oc_relay_auth_2',
+      requestId: 'om_relay_auth_2',
+      text: '帮我分析 OpenCroc 的平台定位和下一步 roadmap',
+    };
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay',
+      headers: buildFeishuRelayAuthHeaders({
+        secret: 'relay-secret',
+        method: 'POST',
+        path: '/api/feishu/relay',
+        body: payload,
+      }),
+      payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(send).toHaveBeenCalled();
+    const json = res.json();
+    expect(json.ok).toBe(true);
+    expect(office.getTask(json.taskId)).toBeTruthy();
+  });
+
+  it('rejects relay requests with an invalid signature', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: 'om_ack_1' }));
+    const { app } = createApp(send, { relaySecret: 'relay-secret' });
+    const payload = {
+      chatId: 'oc_relay_auth_3',
+      requestId: 'om_relay_auth_3',
+      text: '帮我分析 OpenCroc 的平台定位和下一步 roadmap',
+    };
+    const headers = buildFeishuRelayAuthHeaders({
+      secret: 'wrong-secret',
+      method: 'POST',
+      path: '/api/feishu/relay',
+      body: payload,
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay',
+      headers,
+      payload,
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({
+      ok: false,
+      error: 'Relay request signature mismatch',
+    });
+  });
+
+  it('rejects relay requests with an expired timestamp', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: 'om_ack_1' }));
+    const { app } = createApp(send, { relaySecret: 'relay-secret', relayMaxSkewSeconds: 60 });
+    const payload = {
+      chatId: 'oc_relay_auth_4',
+      requestId: 'om_relay_auth_4',
+      text: '帮我分析 OpenCroc 的平台定位和下一步 roadmap',
+    };
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay',
+      headers: buildFeishuRelayAuthHeaders({
+        secret: 'relay-secret',
+        method: 'POST',
+        path: '/api/feishu/relay',
+        body: payload,
+        timestamp: Math.floor(Date.now() / 1000) - 3600,
+      }),
+      payload,
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({
+      ok: false,
+      error: 'Relay request timestamp is invalid or expired',
+    });
+  });
+
+  it('rejects replayed relay requests with the same timestamp and nonce', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: 'om_ack_1' }));
+    const { app } = createApp(send, { relaySecret: 'relay-secret' });
+    const payload = {
+      chatId: 'oc_relay_auth_5',
+      requestId: 'om_relay_auth_5',
+      text: '帮我分析 OpenCroc 的平台定位和下一步 roadmap',
+    };
+    const headers = buildFeishuRelayAuthHeaders({
+      secret: 'relay-secret',
+      method: 'POST',
+      path: '/api/feishu/relay',
+      body: payload,
+      nonce: 'fixed-nonce',
+    });
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay',
+      headers,
+      payload,
+    });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay',
+      headers,
+      payload,
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toEqual({
+      ok: false,
+      error: 'Relay request replay detected',
+    });
+  });
+
+  it('enforces relay auth on relay event updates too', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: 'om_ack_1' }));
+    const { app } = createApp(send, { relaySecret: 'relay-secret' });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay/event',
+      payload: {
+        taskId: 'task_missing_headers',
+        type: 'failed',
+        detail: 'OpenClaw 处理失败',
+      },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({
+      ok: false,
+      error: 'Missing relay auth headers',
+    });
   });
 });

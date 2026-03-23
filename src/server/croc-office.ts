@@ -3,7 +3,7 @@ import type { OpenCrocConfig, PipelineRunResult, GeneratedTestFile, ExecutionMet
 import type { BackendStatus, ExecutionQualityGateResult, ExecutionRunMode, AuthStatus } from '../execution/types.js';
 import type { ScanResult } from '../graph/types.js';
 import type { SummonPlan } from '../agents/task-router.js';
-import { TaskStore, type TaskDecisionPrompt, type TaskRecord } from './task-store.js';
+import { TaskStore, type TaskDecisionPrompt, type TaskDecisionSubmission, type TaskRecord } from './task-store.js';
 import type { FeishuProgressBridge, FeishuTaskTarget } from './feishu-bridge.js';
 import { buildProjectChatAnswer, collectProjectChatSnapshot } from './chat-analysis.js';
 
@@ -265,6 +265,12 @@ export class CrocOffice {
 
   async relayTaskFailed(taskId: string, message: string, waitForDelivery = false): Promise<TaskRecord | undefined> {
     const task = this.taskStore.markFailed(taskId, message);
+    await this.emitTaskUpdate(task, waitForDelivery);
+    return task;
+  }
+
+  async submitTaskDecision(taskId: string, submission: TaskDecisionSubmission, waitForDelivery = false): Promise<TaskRecord | undefined> {
+    const task = this.taskStore.resolveWaiting(taskId, submission);
     await this.emitTaskUpdate(task, waitForDelivery);
     return task;
   }

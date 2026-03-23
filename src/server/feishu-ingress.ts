@@ -1,15 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from './croc-office.js';
-import type { FeishuProgressBridge } from './feishu-bridge.js';
+import type { FeishuBridgeConfig, FeishuProgressBridge } from './feishu-bridge.js';
+import type { FeishuWebhookDedupStore } from './feishu-webhook-dedup-store.js';
 import {
   isComplexRequest,
   startComplexFeishuChatTask,
-  type ComplexRequestStartResult,
 } from './feishu-task-start.js';
+import { InMemoryFeishuWebhookDedupStore } from './feishu-webhook-dedup-store.js';
+import { createFeishuWebhookSecurity } from './feishu-webhook-security.js';
 
 interface FeishuChallengeBody {
   type?: string;
   challenge?: string;
+  token?: string;
+  encrypt?: string;
 }
 
 interface FeishuEventSender {
@@ -26,6 +30,8 @@ interface FeishuEventMessage {
 
 interface FeishuEventBody {
   type?: string;
+  token?: string;
+  encrypt?: string;
   header?: {
     event_type?: string;
     event_id?: string;
@@ -51,6 +57,11 @@ interface PassThroughResult {
   reason: string;
 }
 
+interface RegisterFeishuIngressOptions {
+  config?: FeishuBridgeConfig;
+  dedupStore?: FeishuWebhookDedupStore;
+}
+
 function parseTextContent(raw: string | undefined): string {
   if (!raw) return '';
   try {
@@ -72,12 +83,19 @@ function createDedupKey(body: FeishuEventBody): string | undefined {
   return undefined;
 }
 
-export function registerFeishuIngressRoutes(app: FastifyInstance, office: CrocOffice, feishuBridge: FeishuProgressBridge): void {
-  const seenEvents = new Map<string, number>();
-  const dedupTtlMs = 10 * 60 * 1000;
+export function registerFeishuIngressRoutes(
+  app: FastifyInstance,
+  office: CrocOffice,
+  feishuBridge: FeishuProgressBridge,
+  options: RegisterFeishuIngressOptions = {},
+): void {
+  const dedupStore = options.dedupStore ?? new InMemoryFeishuWebhookDedupStore();
+  const dedupTtlMs = Math.max(1, options.config?.webhookDedupTtlSeconds ?? 600) * 1000;
+  const webhookSecurity = createFeishuWebhookSecurity(options.config ?? {});
 
   app.post<{ Body: FeishuChallengeBody | FeishuEventBody }>('/api/feishu/webhook', async (req, reply) => {
-    const body = req.body as FeishuChallengeBody | FeishuEventBody;
+    const body = webhookSecurity.resolveBody(req, reply) as FeishuChallengeBody | FeishuEventBody | undefined;
+    if (!body) return;
 
     console.log('[feishu:webhook]', JSON.stringify({
       type: body?.type,
@@ -104,13 +122,7 @@ export function registerFeishuIngressRoutes(app: FastifyInstance, office: CrocOf
     const dedupKey = createDedupKey(body as FeishuEventBody);
     if (dedupKey) {
       const now = Date.now();
-      for (const [key, expiresAt] of seenEvents) {
-        if (expiresAt <= now) {
-          seenEvents.delete(key);
-        }
-      }
-      const existing = seenEvents.get(dedupKey);
-      if (existing && existing > now) {
+      if (dedupStore.has(dedupKey, now)) {
         const result: DuplicateResult = {
           ok: true,
           ignored: true,
@@ -118,7 +130,7 @@ export function registerFeishuIngressRoutes(app: FastifyInstance, office: CrocOf
         };
         return result;
       }
-      seenEvents.set(dedupKey, now + dedupTtlMs);
+      dedupStore.remember(dedupKey, now + dedupTtlMs, now);
     }
 
     const event = (body as FeishuEventBody).event;

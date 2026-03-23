@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from './croc-office.js';
-import type { FeishuProgressBridge } from './feishu-bridge.js';
+import type { FeishuBridgeConfig, FeishuProgressBridge } from './feishu-bridge.js';
 import { isComplexRequest, startComplexFeishuChatTask } from './feishu-task-start.js';
+import { createFeishuRelayAuth } from './relay-auth.js';
 
 interface FeishuRelayBody {
   chatId?: string;
@@ -25,8 +26,17 @@ interface FeishuRelayEventBody {
   summary?: string;
 }
 
-export function registerFeishuRelayRoutes(app: FastifyInstance, office: CrocOffice, feishuBridge: FeishuProgressBridge): void {
+export function registerFeishuRelayRoutes(
+  app: FastifyInstance,
+  office: CrocOffice,
+  feishuBridge: FeishuProgressBridge,
+  config: FeishuBridgeConfig = {},
+): void {
+  const relayAuth = createFeishuRelayAuth(config);
+
   app.post<{ Body: FeishuRelayBody }>('/api/feishu/relay', async (req, reply) => {
+    if (!relayAuth.verifyRequest(req, reply, '/api/feishu/relay')) return;
+
     const chatId = req.body.chatId?.trim();
     const text = req.body.text?.trim() || '';
     const requestId = req.body.requestId?.trim() || req.body.messageId?.trim();
@@ -118,6 +128,8 @@ export function registerFeishuRelayRoutes(app: FastifyInstance, office: CrocOffi
   });
 
   app.post<{ Body: FeishuRelayEventBody }>('/api/feishu/relay/event', async (req, reply) => {
+    if (!relayAuth.verifyRequest(req, reply, '/api/feishu/relay/event')) return;
+
     const taskId = req.body.taskId?.trim();
     if (!taskId) {
       return reply.code(400).send({ ok: false, error: 'taskId is required' });

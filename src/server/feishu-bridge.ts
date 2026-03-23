@@ -4,6 +4,16 @@ export interface FeishuBridgeConfig {
   enabled?: boolean;
   baseTaskUrl?: string;
   progressThrottlePercent?: number;
+  relaySecret?: string;
+  relayMaxSkewSeconds?: number;
+  relayNonceTtlSeconds?: number;
+  webhookVerificationToken?: string;
+  webhookEncryptKey?: string;
+  webhookMaxSkewSeconds?: number;
+  webhookDedupTtlSeconds?: number;
+  deliveryMaxRetries?: number;
+  deliveryRetryBaseMs?: number;
+  deliveryRetryMaxMs?: number;
   appId?: string;
   appSecret?: string;
   tenantAccessToken?: string;

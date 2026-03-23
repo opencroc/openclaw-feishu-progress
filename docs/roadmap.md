@@ -31,9 +31,9 @@
 - 已完成：Topic 基座（strict-by-thread）：为每个 Feishu/OpenClaw 对话线程生成确定性的 `topicId`，并禁止跨 `topicId` 的自动关联，避免“莫名其妙把两件事混在一起”
 - 已完成：详情页增强：在 `/tasks/:id` 详情中展示该话题的机器人 roster 与话题任务串（基于 `topicId` / 星球关系）
 - 已完成：手动关联作为补充：支持手动把不同话题的任务用星球关系关联（等价 topic merge 的最小形态）
-- 进行中：`/api/feishu/webhook` 的安全校验与幂等去重“可持久”：当前已有进程内去重，重启后 TTL 持久去重与完整安全校验尚未闭环
-- 未开始：`/api/feishu/relay` 与 `/api/feishu/relay/event` 增加最小鉴权（共享密钥/HMAC），并有回放保护（timestamp/nonce）
-- 未开始：出站投递稳态：对 429/5xx/网络抖动的重试退避策略明确，可配置，且不会造成无限重试与消息风暴
+- 已完成：`/api/feishu/webhook` 的安全校验与幂等去重“可持久”：支持 verification token / signature 校验，且重启后 TTL 内仍可持续去重
+- 已完成：`/api/feishu/relay` 与 `/api/feishu/relay/event` 增加最小鉴权（共享密钥/HMAC），并有回放保护（timestamp/nonce）
+- 已完成：出站投递稳态：对 429/5xx/网络抖动的重试退避策略明确，可配置，且不会造成无限重试与消息风暴
 
 交付（主线 B：OpenCroc scan/pipeline）
 
@@ -42,7 +42,7 @@
 
 Sprint 1 DoD（验收）
 
-- 未开始：针对 webhook/relay 鉴权与去重的单测覆盖完成，并在 CI 里跑
+- 已完成：针对 webhook/relay 鉴权与去重的单测覆盖完成，并在 CI 里跑
 - 进行中：本地 smoke：能在飞书看到 ACK -> 多次 progress -> done/failed（主链路已具备，含重试场景的闭环未完成）
 - 进行中：文档：新增/更新“鉴权配置与部署注意事项”小节（已有 Troubleshooting / systemd 基础，未形成鉴权专节）
 
@@ -53,7 +53,7 @@ Sprint 1 DoD（验收）
 交付（主线 A：飞书卡片交互）
 
 - 进行中：`waiting` 状态生成带按钮的卡片（例如：继续执行/停止/只生成报告/仅 scan），并支持回调；当前已有 waiting 卡片骨架，缺少决策按钮回调
-- 未开始：增加决策提交接口（例如：`POST /api/tasks/:id/decision`），支持 option id 与可选 free text
+- 已完成：增加决策提交接口（例如：`POST /api/tasks/:id/decision`），支持 option id 与可选 free text
 - 进行中：卡片 `card-live` 原地更新：基础更新能力已存在，但尚未接入完整决策流
 - 未开始：Topic 决策门禁：机器人自动产出“会影响外部/会写入产物/会修改代码”的内容时，必须先进入 `waiting`，由你在飞书卡片里确认
 
@@ -65,7 +65,7 @@ Sprint 1 DoD（验收）
 Sprint 2 DoD（验收）
 
 - 未开始：一条完整流程：飞书触发 -> 进入 waiting -> 点按钮 -> 任务继续 -> 最终在飞书收到完成摘要 + 任务链接
-- 未开始：决策回调与任务状态变更有单测（含重复点击/重复回调幂等）
+- 进行中：决策回调与任务状态变更有单测（决策提交与状态恢复测试已补，重复点击/重复回调幂等仍待完成）
 
 ## Sprint 3（2026-04-20 ~ 2026-05-03）：可观测性与生产部署一键化（进行中）
 

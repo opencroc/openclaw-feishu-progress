@@ -157,4 +157,112 @@ describe('FeishuApiDelivery', () => {
     expect(String(secondInit.body)).toContain('"root_id":"om_root_1"');
     expect(String(secondInit.body)).toContain('"reply_to_message_id":"om_ack_1"');
   });
+
+  it('retries message delivery on 429 and succeeds without infinite retry', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: new Headers({ 'retry-after': '0' }),
+        text: async () => 'rate limited',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 0, msg: 'ok', data: { message_id: 'om_retry_1' } }),
+      });
+    global.fetch = fetchMock as typeof fetch;
+    const delivery = new FeishuApiDelivery({
+      enabled: true,
+      mode: 'live',
+      tenantAccessToken: 'tenant_token_xxx',
+      deliveryMaxRetries: 2,
+      deliveryRetryBaseMs: 0,
+      deliveryRetryMaxMs: 0,
+    });
+
+    const receipt = await delivery.send(sampleMessage);
+
+    expect(receipt).toEqual({ messageId: 'om_retry_1', rootId: undefined, threadId: undefined });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries message delivery on network failure and succeeds', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 0, msg: 'ok', data: { message_id: 'om_retry_network' } }),
+      });
+    global.fetch = fetchMock as typeof fetch;
+    const delivery = new FeishuApiDelivery({
+      enabled: true,
+      mode: 'live',
+      tenantAccessToken: 'tenant_token_xxx',
+      deliveryMaxRetries: 2,
+      deliveryRetryBaseMs: 0,
+      deliveryRetryMaxMs: 0,
+    });
+
+    const receipt = await delivery.send(sampleMessage);
+
+    expect(receipt).toEqual({ messageId: 'om_retry_network', rootId: undefined, threadId: undefined });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry non-retryable 4xx delivery errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      headers: new Headers(),
+      text: async () => 'invalid payload',
+    });
+    global.fetch = fetchMock as typeof fetch;
+    const delivery = new FeishuApiDelivery({
+      enabled: true,
+      mode: 'live',
+      tenantAccessToken: 'tenant_token_xxx',
+      deliveryMaxRetries: 3,
+      deliveryRetryBaseMs: 0,
+      deliveryRetryMaxMs: 0,
+    });
+
+    await expect(delivery.send(sampleMessage)).rejects.toThrow('Failed to send Feishu message: 400 Bad Request - invalid payload');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries tenant token fetch on 5xx before sending', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        headers: new Headers(),
+        text: async () => 'upstream error',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 0, msg: 'ok', tenant_access_token: 'tenant_token_retry', expire: 7200 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ code: 0, msg: 'ok', data: { message_id: 'om_retry_token' } }),
+      });
+    global.fetch = fetchMock as typeof fetch;
+    const delivery = new FeishuApiDelivery({
+      enabled: true,
+      mode: 'live',
+      appId: 'cli_xxx',
+      appSecret: 'sec_xxx',
+      deliveryMaxRetries: 2,
+      deliveryRetryBaseMs: 0,
+      deliveryRetryMaxMs: 0,
+    });
+
+    const receipt = await delivery.send(sampleMessage);
+
+    expect(receipt).toEqual({ messageId: 'om_retry_token', rootId: undefined, threadId: undefined });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
 });

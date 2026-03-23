@@ -18,6 +18,7 @@ import { TaskStore } from './task-store.js';
 import { FeishuProgressBridge } from './feishu-bridge.js';
 import { FeishuApiDelivery } from './feishu-delivery.js';
 import { registerFeishuIngressRoutes } from './feishu-ingress.js';
+import { FileFeishuWebhookDedupStore } from './feishu-webhook-dedup-store.js';
 import { registerFeishuRelayRoutes } from './feishu-relay.js';
 import { registerFeishuSmokeRoutes } from './feishu-smoke.js';
 import { resolveRuntimeVersionInfo } from './version.js';
@@ -83,6 +84,7 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // --- Croc Office (Agent orchestrator) ---
   const taskSnapshotStore = new FileTaskSnapshotStore(resolve(opts.cwd, '.opencroc/task-snapshots.json'));
+  const webhookDedupStore = new FileFeishuWebhookDedupStore(resolve(opts.cwd, '.opencroc/feishu-webhook-dedup.json'));
   const planetMetaStore = new FilePlanetMetaStore(resolve(opts.cwd, '.opencroc/planet-meta.json'));
   const edgeStore = new FilePlanetEdgeStore(resolve(opts.cwd, '.opencroc/planet-edges.json'));
   const office = new CrocOffice(opts.config, opts.cwd, {
@@ -100,12 +102,12 @@ export async function startServer(opts: ServeOptions): Promise<void> {
 
   // --- REST API routes ---
   registerProjectRoutes(app, office);
-  registerAgentRoutes(app, office);
+  registerAgentRoutes(app, office, feishuBridge);
   registerPlanetRoutes(app, office, planetMetaStore, edgeStore);
   registerStudioRoutes(app, office, snapshotStore);
   registerVersionRoutes(app, runtimeVersionInfo);
-  registerFeishuIngressRoutes(app, office, feishuBridge);
-  registerFeishuRelayRoutes(app, office, feishuBridge);
+  registerFeishuIngressRoutes(app, office, feishuBridge, { config: feishuConfig, dedupStore: webhookDedupStore });
+  registerFeishuRelayRoutes(app, office, feishuBridge, feishuConfig);
   registerFeishuSmokeRoutes(app, office);
 
   // --- WebSocket endpoint for real-time updates ---

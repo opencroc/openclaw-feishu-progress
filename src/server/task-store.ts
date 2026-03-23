@@ -31,6 +31,11 @@ export interface TaskDecisionPrompt {
   allowFreeText?: boolean;
 }
 
+export interface TaskDecisionSubmission {
+  detail: string;
+  progress?: number;
+}
+
 export interface TaskRecord {
   id: string;
   kind: string;
@@ -240,6 +245,27 @@ export class TaskStore {
         current.detail = message;
       }
       task.events.push({ type: 'failed', message, level: 'error', progress: task.progress, stageKey: task.currentStageKey, time: now() });
+    });
+  }
+
+  resolveWaiting(id: string, submission: TaskDecisionSubmission): TaskRecord | undefined {
+    return this.update(id, (task) => {
+      task.status = 'running';
+      task.waitingFor = undefined;
+      task.decision = undefined;
+      if (typeof submission.progress === 'number') task.progress = clampProgress(submission.progress);
+      const current = task.stages.find((stage) => stage.key === task.currentStageKey);
+      if (current && current.status === 'pending') {
+        current.status = 'running';
+        current.startedAt ??= now();
+      }
+      task.events.push({
+        type: 'progress',
+        message: submission.detail,
+        progress: task.progress,
+        stageKey: task.currentStageKey,
+        time: now(),
+      });
     });
   }
 

@@ -2,8 +2,17 @@ import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from '../croc-office.js';
 import type { ExecutionRunMode } from '../../execution/types.js';
 import type { TaskDecisionPrompt } from '../task-store.js';
+import type { FeishuProgressBridge } from '../feishu-bridge.js';
 import { computeFeishuTopicId } from '../topic.js';
-export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): void {
+
+function formatDecisionDetail(optionLabel: string | undefined, freeText: string | undefined): string {
+  if (optionLabel && freeText) return `Decision received: ${optionLabel} — ${freeText}`;
+  if (optionLabel) return `Decision received: ${optionLabel}`;
+  if (freeText) return `Decision received: ${freeText}`;
+  return 'Decision received';
+}
+
+export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice, feishuBridge: FeishuProgressBridge | null = null): void {
   // GET /api/agents — list all croc agents
   app.get('/api/agents', async () => {
     return office.getAgents();
@@ -95,6 +104,9 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
 
   // POST /api/feishu/tasks/start — create a chat task for a complex Feishu request and return immediate ACK payload
   app.post<{ Body: { title: string; chatId: string; threadId?: string; requestId?: string; detail?: string } }>('/api/feishu/tasks/start', async (req) => {
+    if (!feishuBridge) {
+      return { ok: false, error: 'Feishu bridge is not configured' };
+    }
     const topicId = computeFeishuTopicId({
       chatId: req.body.chatId,
       threadId: req.body.threadId,
@@ -132,6 +144,10 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
 
   // POST /api/feishu/tasks/ack — skeleton endpoint for Feishu complex-request ACK + task binding
   app.post<{ Body: { taskId: string; chatId: string; threadId?: string; requestId?: string; title?: string; stage?: string; detail?: string } }>('/api/feishu/tasks/ack', async (req, reply) => {
+    if (!feishuBridge) {
+      reply.code(503).send({ error: 'Feishu bridge is not configured' });
+      return;
+    }
     const task = office.getTask(req.body.taskId);
     if (!task) {
       reply.code(404).send({ error: 'Task not found' });
@@ -175,6 +191,63 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice): v
     office.activateTask(null);
 
     return { ok: true, task: office.getTask(task.id) };
+  });
+
+  // POST /api/tasks/:id/decision — submit a waiting-state decision and resume task progress
+  app.post<{ Params: { id: string }; Body: { optionId?: string; freeText?: string; detail?: string; progress?: number } }>('/api/tasks/:id/decision', async (req, reply) => {
+    const task = office.getTask(req.params.id);
+    if (!task) {
+      reply.code(404).send({ error: 'Task not found' });
+      return;
+    }
+
+    if (task.status !== 'waiting') {
+      reply.code(409).send({ error: 'Task is not waiting for a decision' });
+      return;
+    }
+
+    const optionId = req.body.optionId?.trim();
+    const freeText = req.body.freeText?.trim();
+    const prompt = task.decision;
+    const selectedOption = optionId
+      ? prompt?.options.find((option) => option.id === optionId)
+      : undefined;
+
+    if (optionId && !selectedOption) {
+      reply.code(400).send({ error: 'Invalid decision option' });
+      return;
+    }
+
+    if (!optionId && !freeText) {
+      reply.code(400).send({ error: 'optionId or freeText is required' });
+      return;
+    }
+
+    if (freeText && prompt && prompt.allowFreeText !== true && !optionId) {
+      reply.code(400).send({ error: 'This decision does not allow free text only submissions' });
+      return;
+    }
+
+    if (freeText && prompt && prompt.allowFreeText !== true && optionId) {
+      reply.code(400).send({ error: 'This decision does not allow free text notes' });
+      return;
+    }
+
+    const detail = req.body.detail?.trim() || formatDecisionDetail(selectedOption?.label, freeText);
+    const updated = await office.submitTaskDecision(task.id, {
+      detail,
+      progress: req.body.progress ?? task.progress,
+    });
+
+    return {
+      ok: true,
+      decision: {
+        optionId: selectedOption?.id,
+        optionLabel: selectedOption?.label,
+        freeText,
+      },
+      task: updated,
+    };
   });
 
   // GET /api/files — generated test files from last pipeline run

@@ -130,11 +130,39 @@ export default defineConfig({
     messageFormat: 'text',
     appId: process.env.FEISHU_APP_ID,
     appSecret: process.env.FEISHU_APP_SECRET,
+    webhookVerificationToken: process.env.FEISHU_WEBHOOK_VERIFICATION_TOKEN,
+    webhookEncryptKey: process.env.FEISHU_WEBHOOK_ENCRYPT_KEY,
+    webhookMaxSkewSeconds: 300,
+    webhookDedupTtlSeconds: 600,
+    relaySecret: process.env.OPENCLAW_RELAY_SECRET,
+    relayMaxSkewSeconds: 300,
+    relayNonceTtlSeconds: 600,
+    deliveryMaxRetries: 2,
+    deliveryRetryBaseMs: 300,
+    deliveryRetryMaxMs: 5000,
     baseTaskUrl: process.env.OPENCLAW_FEISHU_PROGRESS_BASE_TASK_URL ?? 'http://127.0.0.1:8765',
     progressThrottlePercent: 15,
   },
 });
 ```
+
+如果配置了 `feishu.relaySecret`，OpenClaw 调用 `/api/feishu/relay` 与 `/api/feishu/relay/event` 时必须附带：
+
+- `x-openclaw-timestamp`
+- `x-openclaw-nonce`
+- `x-openclaw-signature`
+
+签名内容为 `METHOD + path + timestamp + nonce + stable JSON body` 的 HMAC-SHA256。
+
+如果配置了 `feishu.webhookEncryptKey`，飞书事件订阅调用 `/api/feishu/webhook` 时会校验：
+
+- `x-lark-request-timestamp`
+- `x-lark-request-nonce`
+- `x-lark-signature`
+
+如果同时配置了 `feishu.webhookVerificationToken`，还会校验回调体中的 token。事件去重状态会持久化到 `.opencroc/feishu-webhook-dedup.json`，这样服务重启后 TTL 内的重复投递仍会被拦截。
+
+出站发消息与卡片更新默认会对 `429/5xx/网络错误` 做有限次指数退避重试，可用 `deliveryMaxRetries`、`deliveryRetryBaseMs`、`deliveryRetryMaxMs` 调整。
 
 启动服务：
 
