@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务空间 · 星球视图</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{--bg:#f5f0e8;--panel:#faf7f2;--card:#fff;--border:rgba(140,120,90,.12);--border2:rgba(140,120,90,.28);--t1:#2d2417;--t2:#6b5d4f;--t3:#a09484;--olive:#6b8f4e;--teal:#4a8f8c;--terra:#c4713b;--sand:#b5943a;--plum:#8b6eab;--r:12px}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--t1);line-height:1.6}
+.top{display:flex;align-items:center;justify-content:space-between;padding:11px 28px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.top-l{display:flex;align-items:center;gap:10px}.dot{width:7px;height:7px;border-radius:50%;background:var(--olive);box-shadow:0 0 6px rgba(107,143,78,.5);animation:p 2.5s infinite}@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}
+.top-t{font-size:13px;font-weight:500;color:var(--t2)}.ver{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--teal);background:rgba(74,143,140,.1);padding:4px 12px;border-radius:20px}
+.lay{display:grid;grid-template-columns:268px 1fr 308px;min-height:calc(100vh - 44px)}
+.sl{background:var(--panel);border-right:1px solid var(--border);padding:22px 16px;overflow-y:auto}.sh{font-size:15px;font-weight:600;margin-bottom:6px}.sd{font-size:12px;color:var(--t3);margin-bottom:20px;line-height:1.6}
+.tc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:.2s;box-shadow:0 1px 3px rgba(45,36,23,.06)}.tc:hover{border-color:var(--border2);transform:translateY(-1px)}.tc.on{border-color:rgba(196,113,59,.35);background:rgba(196,113,59,.03)}
+.tg{display:flex;gap:6px;margin-bottom:8px;align-items:center}.tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px}.t1{background:rgba(74,143,140,.1);color:var(--teal)}.t2{background:rgba(139,110,171,.1);color:var(--plum)}.tcn{font-size:11px;color:var(--t3);margin-left:auto}
+.tt{font-size:13px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ts{font-size:11px;color:var(--t3);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pls{display:flex;gap:6px}.pl{font-size:10px;font-weight:600;padding:3px 9px;border-radius:5px}.pp{background:rgba(74,143,140,.1);color:var(--teal)}.pw{background:rgba(181,148,58,.1);color:var(--sand)}.pd{background:rgba(107,143,78,.1);color:var(--olive)}
+.ct{display:flex;flex-direction:column;overflow-y:auto;background:var(--bg)}
+.sw{position:relative;margin:16px;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#f8f4ec,#efe8da 60%,#e6dece);box-shadow:0 1px 20px rgba(44,36,24,.1),0 0 0 1px var(--border)}
+#c3d{width:100%;height:560px;display:block;cursor:grab}#c3d:active{cursor:grabbing}
+.hud{position:absolute;top:16px;left:20px;pointer-events:none}.hud-b{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.65);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500;color:var(--t2);pointer-events:auto}
+.hud-h{margin-top:8px;font-size:11px;color:var(--t3);background:rgba(255,255,255,.5);border-radius:6px;padding:4px 10px;display:inline-block}
+.sts{position:absolute;top:16px;right:20px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.st{background:rgba(255,255,255,.6);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:8px;padding:8px 16px;text-align:center;min-width:82px}
+.sn{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;line-height:1.2}.sn1{color:var(--t1)}.sn2{color:#4a9a6e}.sn3{color:#c49050}.sn4{color:#4a8a8a}.sl2{font-size:10px;color:var(--t3)}
+.ctrls{position:absolute;bottom:16px;right:20px;display:flex;gap:6px}.cb{font-size:12px;padding:6px 16px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.65);backdrop-filter:blur(8px);color:var(--t2);cursor:pointer;transition:.2s;font-family:'Noto Sans SC',sans-serif}.cb:hover{background:rgba(255,255,255,.85)}.cb.on{background:rgba(196,113,59,.1);color:var(--terra);border-color:rgba(196,113,59,.25)}
+.tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .15s;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:12px;padding:14px 18px;max-width:260px;box-shadow:0 4px 24px rgba(45,36,23,.1)}.tip.show{opacity:1}
+.tn{font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px}.tb{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px}.tb.d{background:rgba(107,143,78,.1);color:var(--olive)}.tb.w{background:rgba(74,143,140,.1);color:var(--teal)}.tb.q{background:rgba(181,148,58,.1);color:var(--sand)}
+.tp{margin:8px 0;height:4px;background:rgba(140,120,90,.1);border-radius:2px;overflow:hidden}.tpb{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--olive),var(--teal));transition:width .4s}
+.td{font-size:11px;color:var(--t3);line-height:1.5}.tw{margin-top:6px;font-size:10px;color:var(--olive)}
+.pd2{padding:8px 16px 32px}.sh2{margin-bottom:18px}.st2{font-family:'Source Serif 4','Noto Sans SC',serif;font-size:20px;font-weight:600;margin-bottom:4px}.ss2{font-size:12px;color:var(--t3)}
+.bc{font-size:12px;color:var(--t3);margin-bottom:18px}.bc span{color:var(--t2);font-weight:500}
+.lt{display:flex;gap:8px;margin-bottom:20px}.ltb{font-size:12px;padding:7px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--t2);cursor:pointer;transition:.2s;box-shadow:0 1px 3px rgba(45,36,23,.06)}.ltb.on{background:rgba(196,113,59,.1);color:var(--terra);border-color:rgba(196,113,59,.25);font-weight:600}
+.tkc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 1px 4px rgba(45,36,23,.05)}.tkt{font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-bottom:14px}
+.tkm{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}.mb{font-size:11px;font-weight:600;padding:3px 11px;border-radius:5px}.mb.d{background:rgba(107,143,78,.1);color:var(--olive)}.mt{font-size:12px;color:var(--t3)}
+.tts{display:flex;gap:24px;padding-top:14px;border-top:1px solid var(--border)}.tstamp{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t3)}.tstamp b{color:var(--t2);font-family:'Noto Sans SC',sans-serif;font-weight:500;margin-right:6px}
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mod{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;transition:.2s;box-shadow:0 1px 3px rgba(45,36,23,.06)}.mod:hover{border-color:var(--border2)}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.mn{font-size:13px;font-weight:600}.mp{font-family:'JetBrains Mono',monospace;font-size:13px}.mp.f{color:var(--olive)}.mp.z{color:var(--t3)}
+.ms{display:flex;align-items:center;gap:7px;margin-bottom:8px}.mi{width:7px;height:7px;border-radius:50%}.mi.d{background:var(--olive);box-shadow:0 0 5px rgba(107,143,78,.35)}.mi.i{background:var(--t3);opacity:.5}.mst{font-size:11px;color:var(--t3)}
+.mdesc{font-size:12px;color:var(--t2);line-height:1.5}.mbar{height:3px;background:rgba(140,120,90,.08);border-radius:2px;margin-top:14px;overflow:hidden}.mfill{height:100%;border-radius:2px}.mfill.g{background:linear-gradient(90deg,var(--olive),var(--teal))}.mfill.x{background:var(--t3);opacity:.2}
+.sr{background:var(--panel);border-left:1px solid var(--border);padding:22px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.rs{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:0 1px 3px rgba(45,36,23,.06)}.rsh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.rst{font-size:14px;font-weight:600}.rsb{font-size:10px;font-weight:600;padding:2px 9px;border-radius:5px}.rsb.d{background:rgba(107,143,78,.1);color:var(--olive)}.rsb.c{background:rgba(74,143,140,.1);color:var(--teal)}.rsb.e{background:rgba(139,110,171,.1);color:var(--plum)}
+.stxt{font-size:12.5px;color:var(--t2);line-height:1.7}
+.wi{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}.wi:last-child{border-bottom:none}.wd{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}.wd.d{background:var(--olive);box-shadow:0 0 5px rgba(107,143,78,.3)}.wd.i{background:var(--t3);opacity:.4}
+.wf{flex:1;min-width:0}.wn{font-size:12px;font-weight:500;margin-bottom:3px;display:flex;align-items:center;gap:8px}.wb{font-size:10px;padding:1px 7px;border-radius:4px;font-weight:600}.wb.d{background:rgba(107,143,78,.1);color:var(--olive)}.wb.i{background:var(--bg);color:var(--t3)}.wdesc{font-size:11px;color:var(--t3);line-height:1.5}
+.tli{position:relative;padding:11px 0 11px 20px;border-left:2px solid var(--border)}.tli::before{content:'';position:absolute;left:-5px;top:15px;width:8px;height:8px;border-radius:50%;background:var(--terra);box-shadow:0 0 6px rgba(196,113,59,.3)}.tli:last-child{border-left-color:transparent}.tlt{font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:4px}.tlm{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(140,120,90,.15);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-l"><div class="dot"></div><div class="top-t">任务空间 · 星球视图</div></div><div class="ver">LIVE · v1.8.6 @ ced53bd</div></div>
+<div class="lay">
+<div class="sl">
+  <div class="sh">话题任务流</div><div class="sd">优先按 strict-by-thread 的 topic 聚合，方便一眼看到同一话题下的任务链。</div>
+  <div class="tc on"><div class="tg"><span class="tag t1">线程话题</span><span class="tag t2">线程动态</span><span class="tcn">1 任务</span></div><div class="tt">Feishu 线程 unknown-thread</div><div class="ts">strict-by-thread · fthread unknown...</div><div class="pls"><span class="pl pp">0 进行中</span><span class="pl pw">3 等待中</span><span class="pl pd">1 已完成</span></div></div>
+  <div class="tc"><div class="tg"><span class="tag t1">线程话题</span><span class="tag t2">线程动态</span><span class="tcn">1 任务</span></div><div class="tt">Feishu 线程 unknown-thread</div><div class="ts">strict-by-thread · chat oc_03ed4</div><div class="pls"><span class="pl pp">1 进行中</span><span class="pl pw">0 等待中</span><span class="pl pd">2 已完成</span></div></div>
+  <div class="tc"><div class="tg"><span class="tag t1">线程话题</span><span class="tcn">1 任务</span></div><div class="tt">Feishu 线程 unknown-thread</div><div class="ts">strict-by-thread · chat oc_03ed4</div><div class="pls"><span class="pl pp">0 进行中</span><span class="pl pw">1 等待中</span><span class="pl pd">3 已完成</span></div></div>
+  <div class="tc"><div class="tg"><span class="tag t1">线程话题</span><span class="tcn">1 任务</span></div><div class="tt">Feishu 线程 om_detail....260324</div><div class="ts">strict-by-thread · fthread om_detai...</div><div class="pls"><span class="pl pp">1 进行中</span><span class="pl pw">0 等待中</span><span class="pl pd">6 已完成</span></div></div>
+</div>
+<div class="ct">
+  <div class="sw">
+    <canvas id="c3d"></canvas>
+    <div class="hud"><div class="hud-b"><div class="dot"></div>3D 星图</div><div class="hud-h">拖拽旋转，滚轮缩放，悬浮查看详情。</div></div>
+    <div class="sts"><div class="st"><div class="sn sn1">23</div><div class="sl2">任务总数</div></div><div class="st"><div class="sn sn2">4</div><div class="sl2">执行中</div></div><div class="st"><div class="sn sn3">0</div><div class="sl2">审核</div></div><div class="st"><div class="sn sn4">19</div><div class="sl2">已完成</div></div></div>
+    <div class="ctrls"><button class="cb" onclick="zoomIn()">+</button><button class="cb" onclick="zoomOut()">−</button><button class="cb" onclick="fitAll()">适配</button><button class="cb" onclick="focusMain()">聚焦</button><button class="cb on" id="rotBtn" onclick="toggleRot()">停转</button></div>
+    <div class="tip" id="ptip"><div class="tn" id="ptN"></div><div class="tp"><div class="tpb" id="ptB"></div></div><div class="td" id="ptD"></div><div class="tw" id="ptW"></div></div>
+  </div>
+  <div class="pd2">
+    <div class="sh2"><div class="st2">星球内部</div><div class="ss2">核心工位、阶段轨道、执行工位，以及实时事件时间线。</div></div>
+    <div class="bc">对话星球 › <span>像素办公室</span></div>
+    <div class="lt"><button class="ltb on">像素办公室</button><button class="ltb">2D 环图</button></div>
+    <div class="tkc"><div class="tkt">Real Feishu detail-page waiting smoke</div><div class="tkm"><span class="mb d">已完成</span><span class="mt">100%</span><span class="mt">复杂度 5</span><span class="mt">整理输出</span></div><div class="tts"><div class="tstamp"><b>已完成</b>创建于 2026/3/24 10:34:31</div><div class="tstamp">更新于 2026/3/24 10:35:39</div></div></div>
+    <div class="mods">
+      <div class="mod"><div class="mh"><span class="mn">接收任务</span><span class="mp f">100%</span></div><div class="ms"><div class="mi d"></div><span class="mst">已完成</span></div><div class="mdesc">Real smoke: starting a detail-page waiting flow</div><div class="mbar"><div class="mfill g" style="width:100%"></div></div></div>
+      <div class="mod"><div class="mh"><span class="mn">理解问题</span><span class="mp z">0%</span></div><div class="ms"><div class="mi i"></div><span class="mst">待开始</span></div><div class="mdesc">暂无阶段说明。</div><div class="mbar"><div class="mfill x" style="width:0%"></div></div></div>
+      <div class="mod"><div class="mh"><span class="mn">收集材料</span><span class="mp z">0%</span></div><div class="ms"><div class="mi i"></div><span class="mst">待开始</span></div><div class="mdesc">暂无阶段说明。</div><div class="mbar"><div class="mfill x" style="width:0%"></div></div></div>
+      <div class="mod"><div class="mh"><span class="mn">生成答案</span><span class="mp z">0%</span></div><div class="ms"><div class="mi i"></div><span class="mst">待开始</span></div><div class="mdesc">暂无阶段说明。</div><div class="mbar"><div class="mfill x" style="width:0%"></div></div></div>
+      <div class="mod" style="grid-column:1/-1"><div class="mh"><span class="mn">整理输出</span><span class="mp f">100%</span></div><div class="ms"><div class="mi d"></div><span class="mst">已完成</span></div><div class="mdesc">Real smoke finalized after detail-page confirmation</div><div class="mbar"><div class="mfill g" style="width:100%"></div></div></div>
+    </div>
+  </div>
+</div>
+<div class="sr">
+  <div class="rs"><div class="rsh"><span class="rst">任务摘要</span><span class="rsb d">已完成</span></div><div class="stxt">Real Feishu waiting smoke passed: the task entered waiting in your Feishu DM, resumed via the detail-page decision API, and closed successfully.</div></div>
+  <div class="rs"><div class="rsh"><span class="rst">执行工位</span><span class="rsb c">3 个</span></div>
+    <div class="wi"><div class="wd d"></div><div class="wf"><div class="wn">步算·整理输出·100% <span class="wb d">完成</span></div><div class="wdesc">Real smoke finalized</div></div></div>
+    <div class="wi"><div class="wd i"></div><div class="wf"><div class="wn">规划·理解问题 <span class="wb i">空闲</span></div><div class="wdesc">待命中。</div></div></div>
+    <div class="wi"><div class="wd d"></div><div class="wf"><div class="wn">汇报·整理输出·100% <span class="wb d">完成</span></div><div class="wdesc">Real smoke finalized</div></div></div>
+  </div>
+  <div class="rs"><div class="rsh"><span class="rst">事件时间线</span><span class="rsb e">3 条</span></div>
+    <div class="tli"><div class="tlt">Real smoke: if the Feishu button does not respond, open the detail page</div><div class="tlm">2026/3/24 10:35:11 · 等待 · 68%</div></div>
+    <div class="tli"><div class="tlt">Real smoke: starting a detail-page waiting flow</div><div class="tlm">2026/3/24 10:34:31 · 进度 · 8%</div></div>
+    <div class="tli"><div class="tlt">Task created: Real Feishu detail-page waiting smoke</div><div class="tlm">2026/3/24 10:34:31 · 创建</div></div>
+  </div>
+</div>
+</div>
+<script>
+function addM(p,g,m,x,y,z){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o}
+function makeGlow(r,g,b,i){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,`rgba(${r},${g},${b},${.25*i})`);gr.addColorStop(.4,`rgba(${r},${g},${b},${.06*i})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c)}
+
+// Rich sphere texture with hex grid + circuits + surface detail
+function makeSphereTex(sz,br,bg,bb,lr,lg,lb){
+  const c=document.createElement('canvas');c.width=c.height=sz;const x=c.getContext('2d');
+  // Base gradient
+  const grd=x.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,sz/2);
+  grd.addColorStop(0,`rgb(${br+20},${bg+15},${bb+10})`);grd.addColorStop(1,`rgb(${br},${bg},${bb})`);
+  x.fillStyle=grd;x.fillRect(0,0,sz,sz);
+  // Hex grid
+  const s=sz/12;x.strokeStyle=`rgba(${lr},${lg},${lb},.2)`;x.lineWidth=.8;
+  for(let r=-1;r<16;r++)for(let cl=-1;cl<14;cl++){
+    const px=cl*s*1.5,py=r*s*1.73+(cl%2?s*.87:0);
+    x.beginPath();for(let i=0;i<6;i++){const a=Math.PI/3*i-Math.PI/6;i===0?x.moveTo(px+s*.45*Math.cos(a),py+s*.45*Math.sin(a)):x.lineTo(px+s*.45*Math.cos(a),py+s*.45*Math.sin(a))}x.closePath();x.stroke();
+  }
+  // Circuit traces
+  x.strokeStyle=`rgba(${lr},${lg},${lb},.15)`;x.lineWidth=1.2;
+  for(let i=0;i<15;i++){let cx=Math.random()*sz,cy=Math.random()*sz;x.beginPath();x.moveTo(cx,cy);for(let j=0;j<5;j++){Math.random()>.5?cx+=((Math.random()>.5?1:-1)*s*(1+Math.random()*2)):cy+=((Math.random()>.5?1:-1)*s*(1+Math.random()*2));cx=Math.max(0,Math.min(sz,cx));cy=Math.max(0,Math.min(sz,cy));x.lineTo(cx,cy)}x.stroke();
+    x.fillStyle=`rgba(${lr},${lg},${lb},.35)`;x.fillRect(cx-2,cy-2,4,4);
+  }
+  // Glow spots
+  for(let i=0;i<10;i++){const gx=Math.random()*sz,gy=Math.random()*sz;const g=x.createRadialGradient(gx,gy,0,gx,gy,s*.6);g.addColorStop(0,`rgba(${lr},${lg},${lb},.15)`);g.addColorStop(1,`rgba(${lr},${lg},${lb},0)`);x.fillStyle=g;x.fillRect(gx-s,gy-s,s*2,s*2)}
+  // Latitude lines
+  x.strokeStyle=`rgba(${lr},${lg},${lb},.08)`;x.lineWidth=.5;
+  for(let y=0;y<sz;y+=sz/8){x.beginPath();x.moveTo(0,y);x.lineTo(sz,y);x.stroke()}
+  return new THREE.CanvasTexture(c);
+}
+
+// Grass floor for platform
+function makeGrassTex(sz){
+  const c=document.createElement('canvas');c.width=c.height=sz;const x=c.getContext('2d');
+  x.fillStyle='#7daa52';x.fillRect(0,0,sz,sz);
+  // Grass variation
+  for(let i=0;i<sz;i+=2)for(let j=0;j<sz;j+=2){
+    x.fillStyle=Math.random()>.6?'#6b9a45':'#7daa52';x.fillRect(i,j,2,2);
+  }
+  // Dirt path (cross)
+  const pw=sz*.1;x.fillStyle='#c4a66a';
+  x.fillRect(sz*.1,sz/2-pw/2,sz*.8,pw);x.fillRect(sz/2-pw/2,sz*.1,pw,sz*.8);
+  x.fillStyle='rgba(0,0,0,.04)';
+  for(let i=0;i<40;i++){x.fillRect(sz*.1+Math.random()*sz*.8,sz/2-pw/2+Math.random()*pw,3,2);x.fillRect(sz/2-pw/2+Math.random()*pw,sz*.1+Math.random()*sz*.8,2,3)}
+  // Flowers
+  const cols=['#e86868','#e8c848','#d868c8','#e8a840','#68a8e8'];
+  for(let i=0;i<12;i++){const fx=Math.random()*sz,fy=Math.random()*sz;x.fillStyle='#4a8a30';x.fillRect(fx,fy,1,3);x.fillStyle=cols[Math.floor(Math.random()*5)];x.fillRect(fx-1,fy-1,3,2)}
+  return new THREE.CanvasTexture(c);
+}
+
+// ======== THREE.JS ========
+const canvas=document.getElementById('c3d'),W=canvas.offsetWidth,H=canvas.offsetHeight;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xf2ece2);scene.fog=new THREE.FogExp2(0xf2ece2,.006);
+const camera=new THREE.PerspectiveCamera(45,W/H,.1,500);camera.position.set(0,16,28);camera.lookAt(0,0,0);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setSize(W,H);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.3;
+scene.add(new THREE.AmbientLight(0xfff5e8,.55));
+const sun=new THREE.DirectionalLight(0xfff0d8,.7);sun.position.set(8,18,12);scene.add(sun);
+const pl1=new THREE.PointLight(0xf0c890,.3,50);pl1.position.set(-10,6,6);scene.add(pl1);
+const pl2=new THREE.PointLight(0x90c8b0,.2,50);pl2.position.set(10,8,-6);scene.add(pl2);
+
+const P=[
+  {n:'Real Feishu detail-page waiting smoke',pos:[0,0,0],r:2.5,pr:1,s:'done',w:3,d:'任务已完成',cn:[1,2,3,5]},
+  {n:'接收任务',pos:[-7,1,-3],r:1.5,pr:1,s:'done',w:1,d:'Real smoke: starting',cn:[0,4]},
+  {n:'理解问题',pos:[6,-.5,-4],r:1.2,pr:0,s:'idle',w:0,d:'暂无阶段说明',cn:[0,3]},
+  {n:'生成答案',pos:[8,1.5,2],r:1.1,pr:0,s:'idle',w:0,d:'暂无阶段说明',cn:[0,2]},
+  {n:'收集材料',pos:[-8,-1,4],r:1.1,pr:0,s:'idle',w:0,d:'暂无阶段说明',cn:[1]},
+  {n:'整理输出',pos:[3,.5,6],r:1.7,pr:1,s:'done',w:2,d:'Real smoke finalized',cn:[0]},
+  {n:'历史任务A',pos:[-5,2.5,8],r:.7,pr:1,s:'done',w:0,d:'已归档',cn:[5]},
+  {n:'历史任务B',pos:[10,-1.5,-1],r:.6,pr:.6,s:'wip',w:1,d:'进行中',cn:[3]},
+  {n:'排队任务',pos:[-3,-2,-7],r:.65,pr:.2,s:'wait',w:0,d:'等待中',cn:[2]},
+  {n:'辅助分析',pos:[0,3,-6],r:.75,pr:.85,s:'wip',w:1,d:'接近完成',cn:[0]},
+  {n:'数据同步',pos:[-10,.5,0],r:.6,pr:.5,s:'wip',w:1,d:'同步中',cn:[4]},
+];
+const SC={done:{r:90,g:160,b:110,h:0x5aa06e,sr:[180,168,148],sl:[90,160,110]},wip:{r:74,g:140,b:140,h:0x4a8c8c,sr:[165,175,175],sl:[74,140,140]},idle:{r:175,g:160,b:138,h:0xafa08a,sr:[195,185,170],sl:[175,160,138]},wait:{r:196,g:155,b:60,h:0xc49b3c,sr:[198,182,150],sl:[196,155,60]}};
+const pGroups=[],pMeshes=[],anims=[];
+
+P.forEach((p,idx)=>{
+  const g=new THREE.Group();g.position.set(...p.pos);g.userData=p;
+  const sc=SC[p.s]||SC.idle;
+
+  // ---- FULL SPHERE (lower 65%) with rich texture ----
+  const sTex=makeSphereTex(512,...sc.sr,...sc.sl);sTex.wrapS=sTex.wrapT=THREE.RepeatWrapping;
+  const sGeo=new THREE.SphereGeometry(p.r,48,32,0,Math.PI*2,Math.PI*.3,Math.PI*.7);
+  const sMat=new THREE.MeshPhongMaterial({map:sTex,color:0xd8c8a8,emissive:sc.h,emissiveIntensity:.03,transparent:true,opacity:.92,shininess:50,specular:0x443322});
+  g.add(new THREE.Mesh(sGeo,sMat));
+
+  // Equator glow ring
+  const eqGeo=new THREE.TorusGeometry(p.r*.98,.02,8,64);
+  const eq=new THREE.Mesh(eqGeo,new THREE.MeshBasicMaterial({color:sc.h,transparent:true,opacity:.3}));
+  eq.rotation.x=Math.PI*.5;eq.position.y=p.r*.08;g.add(eq);
+
+  // ---- PLATFORM with pixel grass ----
+  const gTex=makeGrassTex(256);gTex.magFilter=THREE.NearestFilter;gTex.minFilter=THREE.LinearMipmapLinearFilter;
+  const platGeo=new THREE.CylinderGeometry(p.r*.82,p.r*.85,.06,48);
+  addM(g,platGeo,new THREE.MeshPhongMaterial({map:gTex,shininess:5}),0,p.r*.32,0);
+
+  // ---- 3D BUILDINGS with pixel-style roofs ----
+  if(p.r>.55){
+    const f=p.r*.14;
+    // Main building
+    const bw=f*3,bh=f*2,bd=f*2;
+    // Walls
+    addM(g,new THREE.BoxGeometry(bw,bh,bd),new THREE.MeshPhongMaterial({color:0xe8dcc0,shininess:10}),0,p.r*.32+bh/2+.03,0);
+    // Roof (pyramid-ish box)
+    addM(g,new THREE.BoxGeometry(bw*1.15,f*.6,bd*1.15),new THREE.MeshPhongMaterial({color:0xd4885a}),0,p.r*.32+bh+f*.3+.03,0);
+    // Roof highlight
+    addM(g,new THREE.BoxGeometry(bw*1.15,f*.08,bd*1.15),new THREE.MeshPhongMaterial({color:0xe0a070}),0,p.r*.32+bh+f*.6+.03,0);
+    // Door
+    addM(g,new THREE.BoxGeometry(f*.5,f*.8,f*.05),new THREE.MeshPhongMaterial({color:0x6a5030}),0,p.r*.32+f*.4+.03,bd/2+.01);
+    // Screen windows (emissive!)
+    const scrOn=p.s==='done'||p.s==='wip';
+    const screenColor=scrOn?sc.h:0x606050;
+    const screenEmit=scrOn?.35:.02;
+    // Front screens
+    addM(g,new THREE.BoxGeometry(f*.8,f*.6,f*.04),new THREE.MeshPhongMaterial({color:0x1a2820,emissive:screenColor,emissiveIntensity:screenEmit,shininess:80}),f*-.8,p.r*.32+bh*.6+.03,bd/2+.02);
+    addM(g,new THREE.BoxGeometry(f*.8,f*.6,f*.04),new THREE.MeshPhongMaterial({color:0x1a2820,emissive:screenColor,emissiveIntensity:screenEmit,shininess:80}),f*.8,p.r*.32+bh*.6+.03,bd/2+.02);
+    // Screen glow
+    if(scrOn){
+      const gt=makeGlow(sc.r,sc.g,sc.b,.5);
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,transparent:true,depthWrite:false}));
+      sp.scale.set(f*3,f*2,1);sp.position.set(0,p.r*.32+bh*.5,bd/2+f*.3);g.add(sp);
+    }
+
+    // Secondary building (if workers > 1)
+    if(p.w>1){
+      const ox=-p.r*.35,oz=p.r*.25;
+      addM(g,new THREE.BoxGeometry(bw*.7,bh*.8,bd*.7),new THREE.MeshPhongMaterial({color:0xd8c8a0}),ox,p.r*.32+bh*.4+.03,oz);
+      addM(g,new THREE.BoxGeometry(bw*.8,f*.4,bd*.8),new THREE.MeshPhongMaterial({color:0xb0885a}),ox,p.r*.32+bh*.8+f*.2+.03,oz);
+    }
+
+    // ---- CROC CHARACTERS (detailed 3D pixel style) ----
+    for(let ci=0;ci<Math.min(p.w,3);ci++){
+      const ang=ci/Math.max(p.w,1)*Math.PI*.8-Math.PI*.2;
+      const cd=p.r*.5;
+      const cx=Math.cos(ang)*cd,cz=Math.sin(ang)*cd;
+      const by=p.r*.32+.03;
+      const cg=new THREE.Group();
+      const cs=f*.55;
+      // Body
+      addM(cg,new THREE.BoxGeometry(cs*.8,cs*1,cs*.6),new THREE.MeshPhongMaterial({color:0x5aaa5e}),0,cs*.5,0);
+      // Belly
+      addM(cg,new THREE.BoxGeometry(cs*.55,cs*.7,cs*.45),new THREE.MeshPhongMaterial({color:0xc8d890}),0,cs*.4,cs*.08);
+      // Head
+      addM(cg,new THREE.BoxGeometry(cs*.7,cs*.55,cs*.7),new THREE.MeshPhongMaterial({color:0x62b866}),0,cs*1.25,0);
+      // Snout
+      addM(cg,new THREE.BoxGeometry(cs*.45,cs*.25,cs*.35),new THREE.MeshPhongMaterial({color:0x4e9e52}),0,cs*1.1,-cs*.4);
+      // Jaw
+      addM(cg,new THREE.BoxGeometry(cs*.4,cs*.12,cs*.3),new THREE.MeshPhongMaterial({color:0xc8d890}),0,cs*.95,-cs*.4);
+      // Eyes (white + pupil)
+      addM(cg,new THREE.BoxGeometry(cs*.14,cs*.14,cs*.06),new THREE.MeshBasicMaterial({color:0xffffff}),cs*-.16,cs*1.4,-cs*.32);
+      addM(cg,new THREE.BoxGeometry(cs*.14,cs*.14,cs*.06),new THREE.MeshBasicMaterial({color:0xffffff}),cs*.16,cs*1.4,-cs*.32);
+      addM(cg,new THREE.BoxGeometry(cs*.07,cs*.07,cs*.03),new THREE.MeshBasicMaterial({color:0x222222}),cs*-.16,cs*1.4,-cs*.35);
+      addM(cg,new THREE.BoxGeometry(cs*.07,cs*.07,cs*.03),new THREE.MeshBasicMaterial({color:0x222222}),cs*.16,cs*1.4,-cs*.35);
+      // Arms
+      addM(cg,new THREE.BoxGeometry(cs*.2,cs*.5,cs*.2),new THREE.MeshPhongMaterial({color:0x4e9e52}),cs*-.5,cs*.45,0);
+      addM(cg,new THREE.BoxGeometry(cs*.2,cs*.5,cs*.2),new THREE.MeshPhongMaterial({color:0x4e9e52}),cs*.5,cs*.45,0);
+      // Legs
+      addM(cg,new THREE.BoxGeometry(cs*.25,cs*.35,cs*.25),new THREE.MeshPhongMaterial({color:0x4e9e52}),cs*-.2,cs*.18,0);
+      addM(cg,new THREE.BoxGeometry(cs*.25,cs*.35,cs*.25),new THREE.MeshPhongMaterial({color:0x4e9e52}),cs*.2,cs*.18,0);
+      // Tail
+      addM(cg,new THREE.BoxGeometry(cs*.15,cs*.2,cs*.6),new THREE.MeshPhongMaterial({color:0x5aaa5e}),0,cs*.35,cs*.45);
+      addM(cg,new THREE.BoxGeometry(cs*.1,cs*.15,cs*.4),new THREE.MeshPhongMaterial({color:0x5aaa5e}),0,cs*.3,cs*.85);
+
+      cg.position.set(cx,by,cz);cg.rotation.y=ang+Math.PI;g.add(cg);
+      anims.push({t:'croc',m:cg,by:cg.position.y,ph:Math.random()*6.28});
+    }
+
+    // Trees on platform
+    if(p.r>0.9){
+      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([tx,tz],ti)=>{
+        const dist=p.r*.6;const tpx=tx*dist*.5,tpz=tz*dist*.5;
+        // Trunk
+        addM(g,new THREE.BoxGeometry(f*.2,f*1.2,f*.2),new THREE.MeshPhongMaterial({color:0x8a6840}),tpx,p.r*.32+f*.6+.03,tpz);
+        // Canopy (rounded box)
+        addM(g,new THREE.SphereGeometry(f*.55,8,6),new THREE.MeshPhongMaterial({color:ti%2?0x6aaa50:0x5a9a40}),tpx,p.r*.32+f*1.4+.03,tpz);
+      });
+    }
+  }
+
+  // ---- GLASS DOME (more visible!) ----
+  const dGeo=new THREE.SphereGeometry(p.r*1.02,32,16,0,Math.PI*2,0,Math.PI*.4);
+  // Tinted glass
+  g.add(new THREE.Mesh(dGeo,new THREE.MeshPhongMaterial({color:sc.h,transparent:true,opacity:.05,side:THREE.DoubleSide,shininess:100,specular:0xffffff})));
+  // Colored wireframe (make dome visible)
+  const dwMat=new THREE.MeshBasicMaterial({color:sc.h,transparent:true,opacity:.15,wireframe:true});
+  g.add(new THREE.Mesh(dGeo.clone(),dwMat));
+  // Dome edge ring (very visible)
+  const deGeo=new THREE.TorusGeometry(p.r*1.01,.025,8,64);
+  const deR=new THREE.Mesh(deGeo,new THREE.MeshBasicMaterial({color:sc.h,transparent:true,opacity:.35}));
+  deR.rotation.x=Math.PI*.5;deR.position.y=p.r*.02;g.add(deR);
+
+  // ---- PROGRESS RING ----
+  // Background track
+  const trGeo=new THREE.TorusGeometry(p.r*1.25,.025,8,80);
+  const tr=new THREE.Mesh(trGeo,new THREE.MeshBasicMaterial({color:0xd8c8a0,transparent:true,opacity:.15}));
+  tr.rotation.x=Math.PI*.5;tr.rotation.z=.12;tr.position.y=p.r*.05;g.add(tr);
+  // Progress arc
+  if(p.pr>0){
+    const aGeo=new THREE.TorusGeometry(p.r*1.25,.04,8,80,Math.PI*2*p.pr);
+    const arc=new THREE.Mesh(aGeo,new THREE.MeshBasicMaterial({color:sc.h,transparent:true,opacity:.55}));
+    arc.rotation.x=Math.PI*.5;arc.rotation.z=.12;arc.position.y=p.r*.05;g.add(arc);
+  }
+
+  // ---- GLOW ----
+  const glT=makeGlow(sc.r,sc.g,sc.b,.6);
+  const glS=new THREE.Sprite(new THREE.SpriteMaterial({map:glT,transparent:true,depthWrite:false}));
+  glS.scale.set(p.r*4.5,p.r*4.5,1);g.add(glS);
+
+  // ---- NAME LABEL ----
+  const lc=document.createElement('canvas');lc.width=256;lc.height=40;const lx=lc.getContext('2d');
+  lx.font='bold 15px "Noto Sans SC"';lx.textAlign='center';
+  lx.fillStyle=`rgba(${sc.r},${sc.g},${sc.b},.85)`;
+  lx.fillText(p.n.length>10?p.n.slice(0,10)+'…':p.n,128,22);
+  const lT=new THREE.CanvasTexture(lc);
+  const lS=new THREE.Sprite(new THREE.SpriteMaterial({map:lT,transparent:true,depthWrite:false}));
+  lS.scale.set(p.r*2.2,p.r*.35,1);lS.position.y=p.r*1.15;g.add(lS);
+
+  scene.add(g);pGroups.push(g);pMeshes.push({g,d:p});
+});
+
+// ======== CONNECTIONS ========
+const cParts=[],pairs=new Set();
+P.forEach((p,i)=>{p.cn.forEach(j=>{
+  const k=[Math.min(i,j),Math.max(i,j)].join('-');
+  if(!pairs.has(k)){pairs.add(k);
+    const f=new THREE.Vector3(...P[i].pos),t=new THREE.Vector3(...P[j].pos);
+    const m=f.clone().add(t).multiplyScalar(.5);m.y+=1+Math.random()*1.5;
+    const cv=new THREE.QuadraticBezierCurve3(f,m,t);
+    const done=P[i].s==='done'&&P[j].s==='done';
+    scene.add(new THREE.Mesh(new THREE.TubeGeometry(cv,40,.018,6,false),new THREE.MeshBasicMaterial({color:done?0x8aba80:0xc0b8a0,transparent:true,opacity:done?.18:.07})));
+    for(let pk=0;pk<(done?4:2);pk++){
+      const sc2=done?SC.done:SC.idle;const gt=makeGlow(sc2.r,sc2.g,sc2.b,.5);
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:gt,transparent:true,depthWrite:false}));
+      sp.scale.set(.3,.3,1);sp.userData={cv,o:pk/(done?4:2),sp:.0003+Math.random()*.0005};
+      scene.add(sp);cParts.push(sp);
+    }
+  }
+})});
+
+// Dust
+const sG=new THREE.BufferGeometry(),sV=[],sC=[];
+for(let i=0;i<500;i++){sV.push((Math.random()-.5)*90,(Math.random()-.5)*50,(Math.random()-.5)*90);const b=.5+Math.random()*.5;sC.push(b*.85,b*.78,b*.65)}
+sG.setAttribute('position',new THREE.Float32BufferAttribute(sV,3));sG.setAttribute('color',new THREE.Float32BufferAttribute(sC,3));
+scene.add(new THREE.Points(sG,new THREE.PointsMaterial({vertexColors:true,size:.07,transparent:true,opacity:.35})));
+
+// ======== CONTROLS ========
+let drag=false,pm={x:0,y:0},oA=0,oY=16,oD=28,aR=true,tA=0,tY=16,tD=28;
+canvas.addEventListener('mousedown',e=>{drag=true;pm={x:e.clientX,y:e.clientY}});
+canvas.addEventListener('mousemove',e=>{if(drag){tA-=(e.clientX-pm.x)*.005;tY=Math.max(-5,Math.min(25,tY+(e.clientY-pm.y)*.08));pm={x:e.clientX,y:e.clientY}}hover(e)});
+canvas.addEventListener('mouseup',()=>drag=false);canvas.addEventListener('mouseleave',()=>{drag=false;ht()});
+canvas.addEventListener('wheel',e=>{tD=Math.max(8,Math.min(50,tD+e.deltaY*.02));e.preventDefault()},{passive:false});
+
+const rc=new THREE.Raycaster(),mv=new THREE.Vector2(),tip=document.getElementById('ptip');
+function hover(e){const r=canvas.getBoundingClientRect();mv.x=((e.clientX-r.left)/r.width)*2-1;mv.y=-((e.clientY-r.top)/r.height)*2+1;rc.setFromCamera(mv,camera);
+  let hit=null;for(const pm2 of pMeshes){if(rc.ray.intersectsSphere(new THREE.Sphere(pm2.g.position,pm2.d.r*1.3))){hit=pm2;break}}
+  if(hit){const d=hit.d;const sl=d.s==='done'?'已完成':d.s==='wip'?'进行中':d.s==='wait'?'等待中':'空闲';
+    document.getElementById('ptN').innerHTML=`🐊 ${d.n} <span class="tb ${d.s==='done'?'d':d.s==='wip'?'w':'q'}">${sl}</span>`;
+    document.getElementById('ptB').style.width=(d.pr*100)+'%';document.getElementById('ptD').textContent=d.d;
+    document.getElementById('ptW').textContent=d.w>0?`🐊 ${d.w} 只鳄鱼在工作`:'暂无鳄鱼值班';
+    tip.classList.add('show');tip.style.left=(e.clientX-r.left+16)+'px';tip.style.top=(e.clientY-r.top-10)+'px';canvas.style.cursor='pointer'}else ht()}
+function ht(){tip.classList.remove('show');canvas.style.cursor='grab'}
+function zoomIn(){tD=Math.max(8,tD-4)}function zoomOut(){tD=Math.min(50,tD+4)}
+function fitAll(){tD=28;tY=16;tA=0}function focusMain(){tD=10;tY=8;tA=0}
+function toggleRot(){aR=!aR;document.getElementById('rotBtn').classList.toggle('on',aR);document.getElementById('rotBtn').textContent=aR?'停转':'旋转'}
+
+let t=0;
+function animate(){
+  requestAnimationFrame(animate);t+=.016;
+  if(aR&&!drag)tA+=.0012;
+  oA+=(tA-oA)*.05;oY+=(tY-oY)*.05;oD+=(tD-oD)*.05;
+  camera.position.x=Math.sin(oA)*oD;camera.position.z=Math.cos(oA)*oD;camera.position.y=oY;camera.lookAt(0,0,0);
+  pGroups.forEach((g,i)=>{g.position.y=P[i].pos[1]+Math.sin(t*.35+i*1.2)*.2;g.rotation.y+=.0006});
+  anims.forEach(a=>{if(a.t==='croc')a.m.position.y=a.by+Math.sin(t*2.5+a.ph)*.015});
+  cParts.forEach(sp=>{if(sp.userData.cv){sp.userData.o=(sp.userData.o+sp.userData.sp*16)%1;sp.position.copy(sp.userData.cv.getPoint(sp.userData.o));sp.material.opacity=.2+.4*Math.sin(sp.userData.o*Math.PI)}});
+  pl1.intensity=.28+.05*Math.sin(t*.7);
+  renderer.render(scene,camera);
+}
+animate();
+document.querySelectorAll('.ltb').forEach(t=>t.addEventListener('click',()=>{document.querySelectorAll('.ltb').forEach(l=>l.classList.remove('on'));t.classList.add('on')}));
+</script>
+</body>
+</html>

@@ -22,52 +22,527 @@ import type {
   TaskRecord,
 } from '@features/tasks/types';
 import { getCurrentAppPath, navigate, subscribeNavigation } from '@shared/navigation';
-import { shouldPrefer2D, supportsWebGL } from '@shared/platform';
+import { supportsWebGL } from '@shared/platform';
 
 const taskStyles = `
 :root {
-  --task-bg: #f6f1e8;
-  --task-panel: rgba(255, 251, 246, 0.88);
-  --task-card: rgba(255, 255, 255, 0.8);
-  --task-hover: rgba(248, 242, 233, 0.96);
-  --task-border: rgba(100, 83, 61, 0.14);
-  --task-accent: #2e6b59;
-  --task-red: #b95a4a;
-  --task-orange: #b78034;
-  --task-blue: #56748f;
-  --task-purple: #7b6a89;
-  --task-text: #2d261f;
-  --task-dim: #6f6254;
-  --task-muted: #9a8a77;
-  --task-shadow: 0 20px 60px rgba(84, 67, 48, 0.12);
+  --task-bg: #f5f0e8;
+  --task-panel: #faf7f2;
+  --task-card: #fff;
+  --task-border: rgba(140, 120, 90, 0.12);
+  --task-border-hover: rgba(140, 120, 90, 0.28);
+  --task-text: #2d2417;
+  --task-dim: #6b5d4f;
+  --task-muted: #a09484;
+  --task-accent: #6b8f4e; /* olive */
+  --task-red: #c4713b; /* terra */
+  --task-orange: #b5943a; /* sand */
+  --task-blue: #4a8f8c; /* teal */
+  --task-purple: #8b6eab; /* plum */
+  --task-shadow: 0 1px 3px rgba(45, 36, 23, 0.06);
 }
-html, body, #root { width: 100%; height: 100%; }
+html, body, #root { width: 100%; height: 100%; margin: 0; padding: 0; }
 body {
-  margin: 0;
-  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "PingFang SC", "Hiragino Sans GB", serif;
-  background:
-    radial-gradient(circle at top left, rgba(46, 107, 89, 0.08), transparent 30%),
-    radial-gradient(circle at top right, rgba(86, 116, 143, 0.08), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(183, 128, 52, 0.08), transparent 24%),
-    var(--task-bg);
+  font-family: 'Noto Sans SC', "PingFang SC", sans-serif;
+  background: var(--task-bg);
   color: var(--task-text);
 }
-.task-page {
-  min-height: 100dvh;
-  height: 100dvh;
-  padding: 24px;
+
+/* Topbar */
+.task-page-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: var(--task-panel);
+  border-bottom: 1px solid var(--task-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.task-page-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.task-page-topbar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--task-accent);
+  box-shadow: 0 0 8px rgba(107, 143, 78, 0.6);
+  animation: task-pulse 2s infinite;
+}
+@keyframes task-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+.task-page-topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--task-dim);
+  letter-spacing: 0.02em;
+}
+.task-page-topbar-ver {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--task-text);
+  background: var(--task-card);
+  border: 1px solid var(--task-border);
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: var(--task-shadow);
+}
+
+/* Main Layout */
+.task-page-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  grid-template-rows: clamp(278px, 35dvh, 340px) minmax(0, 1fr);
-  grid-template-areas:
-    "universe universe"
-    "panel main";
-  gap: 14px;
-  max-width: 1560px;
-  margin: 0 auto;
-  box-sizing: border-box;
+  grid-template-columns: 228px minmax(0, 1fr) 308px;
+  min-height: calc(100dvh - 44px);
+  height: calc(100dvh - 44px);
   overflow: hidden;
 }
+
+/* Left Panel */
+.task-panel-left {
+  background: var(--task-panel);
+  border-right: 1px solid var(--task-border);
+  padding: 12px 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.task-panel-left .task-panel-head {
+  padding: 0 0 10px 0;
+  border: none;
+}
+.task-panel-left h1 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+}
+.task-panel-left .task-dim-text {
+  font-size: 10px;
+  color: var(--task-muted);
+  line-height: 1.45;
+}
+
+/* Center Panel */
+.task-panel-center {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--task-bg);
+}
+
+.task-universe-shell {
+  position: relative;
+  margin: 16px 20px 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8f4ec, #efe8da 60%, #e6dece);
+  box-shadow: 0 4px 24px rgba(44, 36, 24, 0.08), 0 0 0 1px var(--task-border);
+  min-height: 560px;
+  height: 560px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-universe-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.task-main {
+  padding: 24px 20px 40px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.task-main .task-main-head {
+  padding: 0;
+  border: none;
+  margin-bottom: 18px;
+}
+.task-main h1 {
+  font-family: 'Source Serif 4', 'Noto Sans SC', serif;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+}
+.task-main .task-dim-text {
+  font-size: 12px;
+  color: var(--task-muted);
+}
+
+/* Right Panel */
+.task-panel-right {
+  background: var(--task-panel);
+  border-left: 1px solid var(--task-border);
+  padding: 22px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.task-right-card {
+  background: var(--task-card);
+  border: 1px solid var(--task-border);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: var(--task-shadow);
+}
+.task-right-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.task-right-card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.task-right-card-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 5px;
+}
+.task-right-card-badge.done { background: rgba(107, 143, 78, 0.1); color: var(--task-accent); }
+.task-right-card-badge.info { background: rgba(74, 143, 140, 0.1); color: var(--task-blue); }
+.task-right-card-badge.warn { background: rgba(181, 148, 58, 0.1); color: var(--task-orange); }
+.task-right-card-badge.error { background: rgba(139, 110, 171, 0.1); color: var(--task-purple); }
+
+/* Left Items */
+.task-item {
+  background: var(--task-card);
+  border: 1px solid var(--task-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 1px 2px rgba(45, 36, 23, 0.04);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.task-item:hover {
+  border-color: var(--task-border-hover);
+  transform: translateY(-1px);
+}
+.task-item.active {
+  border-color: rgba(196, 113, 59, 0.35);
+  background: rgba(196, 113, 59, 0.03);
+}
+.task-item-topline {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.task-item-tag {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.task-item-tag.t1 { background: rgba(74, 143, 140, 0.1); color: var(--task-blue); }
+.task-item-tag.t2 { background: rgba(139, 110, 171, 0.1); color: var(--task-purple); }
+.task-item-count {
+  font-size: 10px;
+  color: var(--task-muted);
+  margin-left: auto;
+}
+.task-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-meta {
+  font-size: 10px;
+  color: var(--task-muted);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-item-pls {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.task-item-pl {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.task-item-pl.pp { background: rgba(74, 143, 140, 0.1); color: var(--task-blue); }
+.task-item-pl.pw { background: rgba(181, 148, 58, 0.1); color: var(--task-orange); }
+.task-item-pl.pd { background: rgba(107, 143, 78, 0.1); color: var(--task-accent); }
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-topic-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.task-topic-card,
+.task-topic-section {
+  border-radius: 14px;
+  border: 1px solid var(--task-border);
+  background:
+    radial-gradient(circle at top right, rgba(86, 116, 143, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 242, 233, 0.9));
+  box-shadow: 0 8px 22px rgba(84, 67, 48, 0.06);
+}
+.task-topic-card {
+  padding: 8px 10px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.task-topic-card:hover,
+.task-topic-card.active {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--task-blue) 30%, var(--task-border));
+  box-shadow: 0 10px 24px rgba(84, 67, 48, 0.1);
+}
+.task-topic-card-top,
+.task-topic-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.task-topic-card-title,
+.task-topic-section-title {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.task-topic-card-meta,
+.task-topic-section-meta,
+.task-topic-spotlight-meta {
+  margin-top: 2px;
+  color: var(--task-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.task-topic-card-stats,
+.task-topic-head-stats,
+.task-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.task-topic-tasklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.task-topic-section {
+  padding: 8px;
+}
+.task-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--task-dim);
+}
+.task-status-badge.info {
+  border-color: color-mix(in srgb, var(--task-blue) 35%, var(--task-border));
+  color: var(--task-blue);
+  background: color-mix(in srgb, var(--task-blue) 12%, #ffffff);
+}
+.task-status-badge.warn {
+  border-color: color-mix(in srgb, var(--task-orange) 35%, var(--task-border));
+  color: var(--task-orange);
+  background: color-mix(in srgb, var(--task-orange) 12%, #ffffff);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid var(--task-border);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--task-dim);
+}
+.badge.running {
+  border-color: color-mix(in srgb, var(--task-orange) 28%, var(--task-border));
+  color: var(--task-orange);
+  background: color-mix(in srgb, var(--task-orange) 10%, #ffffff);
+}
+.badge.waiting {
+  border-color: color-mix(in srgb, var(--task-purple) 28%, var(--task-border));
+  color: var(--task-purple);
+  background: color-mix(in srgb, var(--task-purple) 10%, #ffffff);
+}
+.badge.done {
+  border-color: color-mix(in srgb, var(--task-accent) 28%, var(--task-border));
+  color: var(--task-accent);
+  background: color-mix(in srgb, var(--task-accent) 10%, #ffffff);
+}
+.badge.failed {
+  border-color: color-mix(in srgb, var(--task-red) 30%, var(--task-border));
+  color: var(--task-red);
+  background: color-mix(in srgb, var(--task-red) 10%, #ffffff);
+}
+
+/* Overrides for components */
+.universe-canvas-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.universe-canvas-stage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(100, 83, 61, 0.1);
+  background:
+    radial-gradient(circle at 18% 20%, rgba(86, 116, 143, 0.08), transparent 20%),
+    radial-gradient(circle at 74% 18%, rgba(183, 128, 52, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(246, 239, 228, 0.96));
+  cursor: grab;
+}
+.universe-canvas-stage:active {
+  cursor: grabbing;
+}
+.universe-canvas-stage-3d {
+  position: relative;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(86, 116, 143, 0.12), transparent 24%),
+    radial-gradient(circle at 78% 18%, rgba(183, 128, 52, 0.12), transparent 24%),
+    radial-gradient(circle at 50% 72%, rgba(46, 107, 89, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(244, 236, 225, 0.98));
+}
+.universe-scene-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.universe-scene-overlay {
+  position: absolute;
+  inset: 18px auto auto 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(420px, calc(100% - 36px));
+  pointer-events: none;
+}
+.universe-scene-badge {
+  align-self: flex-start;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(100, 83, 61, 0.14);
+  background: rgba(255, 251, 246, 0.88);
+  color: var(--task-dim);
+  font-size: 12px;
+}
+.universe-scene-hud,
+.universe-scene-note {
+  border-radius: 16px;
+  border: 1px solid rgba(100, 83, 61, 0.14);
+  background: rgba(255, 251, 246, 0.82);
+  box-shadow: 0 14px 36px rgba(84, 67, 48, 0.08);
+  backdrop-filter: blur(14px);
+  padding: 12px 14px;
+}
+.universe-scene-hud strong {
+  display: block;
+  color: var(--task-text);
+  font-size: 14px;
+}
+.universe-scene-hud span,
+.universe-scene-note {
+  display: block;
+  color: var(--task-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.universe-scene-hud span + span {
+  margin-top: 4px;
+}
+.universe-canvas-toolbar {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.universe-canvas-toolbar button {
+  border: 1px solid rgba(100, 83, 61, 0.14);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: rgba(255, 251, 246, 0.9);
+  color: var(--task-text);
+  font: inherit;
+  cursor: pointer;
+}
+.universe-canvas-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.task-view-switch button {
+  font-size: 12px;
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--task-border);
+  background: var(--task-card);
+  color: var(--task-dim);
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: var(--task-shadow);
+}
+.task-view-switch button.active {
+  background: rgba(196, 113, 59, 0.1);
+  color: var(--task-red);
+  border-color: rgba(196, 113, 59, 0.25);
+  font-weight: 600;
+}
+
+/* Reset scrollbars */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(140, 120, 90, 0.15); border-radius: 3px; }
+`;
+
+const taskDetailStyles = `
 .task-detail-page {
   min-height: 100%;
   padding: 24px;
@@ -726,10 +1201,10 @@ body {
   gap: 8px;
 }
 .task-topic-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 .task-topic-card,
 .task-topic-section {
@@ -741,7 +1216,7 @@ body {
   box-shadow: 0 14px 36px rgba(84, 67, 48, 0.08);
 }
 .task-topic-card {
-  padding: 14px;
+  padding: 8px 10px;
   text-align: left;
   color: inherit;
   cursor: pointer;
@@ -762,17 +1237,17 @@ body {
 }
 .task-topic-card-title,
 .task-topic-section-title {
-  margin: 10px 0 0;
-  font-size: 16px;
+  margin: 4px 0 0;
+  font-size: 12px;
   line-height: 1.3;
 }
 .task-topic-card-meta,
 .task-topic-section-meta,
 .task-topic-spotlight-meta {
-  margin-top: 6px;
+  margin-top: 2px;
   color: var(--task-dim);
-  font-size: 12px;
-  line-height: 1.65;
+  font-size: 10px;
+  line-height: 1.45;
 }
 .task-topic-card-stats,
 .task-topic-head-stats,
@@ -782,10 +1257,10 @@ body {
   gap: 8px;
 }
 .task-topic-groups {
-  gap: 14px;
+  gap: 10px;
 }
 .task-topic-section {
-  padding: 14px;
+  padding: 10px 12px;
 }
 .task-topic-head-copy {
   min-width: 0;
@@ -809,15 +1284,15 @@ body {
 .task-topic-tasklist {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .task-item-topline {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 .task-item-topline-left {
   display: flex;
@@ -849,8 +1324,8 @@ body {
 .task-item-side {
   flex: 0 0 auto;
   color: var(--task-muted);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 9px;
+  line-height: 1.3;
   text-align: right;
 }
 .task-item-summary {
@@ -922,23 +1397,23 @@ body {
 }
 .task-item {
   position: relative;
-  padding: 12px 12px 12px 22px;
-  border-radius: 16px;
+  padding: 8px 8px 8px 15px;
+  border-radius: 10px;
   border: 1px solid var(--task-border);
   background: var(--task-card);
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
   color: inherit;
   text-align: left;
-  box-shadow: 0 12px 32px rgba(84, 67, 48, 0.06);
+  box-shadow: 0 6px 16px rgba(84, 67, 48, 0.05);
 }
 .task-item::before {
   content: "";
   position: absolute;
-  left: 10px;
-  top: 12px;
-  bottom: 12px;
-  width: 4px;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
   border-radius: 999px;
   background: rgba(154, 138, 119, 0.5);
   opacity: 0.9;
@@ -1971,7 +2446,7 @@ interface TaskDecisionApiResponse {
 }
 
 export default function TasksPage() {
-  const disable3D = useMemo(() => shouldPrefer2D() || !supportsWebGL(), []);
+  const disable3D = useMemo(() => !supportsWebGL(), []);
   const [overviewViewMode, setOverviewViewMode] = useState<'3d' | '2d'>(() => (disable3D ? '2d' : '3d'));
   const [interiorViewMode, setInteriorViewMode] = useState<'3d' | '2d'>(() => (disable3D ? '2d' : '3d'));
   const pathname = useSyncExternalStore(subscribeNavigation, getCurrentAppPath, () => '/tasks');
@@ -2482,7 +2957,7 @@ export default function TasksPage() {
   if (detailMode) {
     return (
       <>
-        <style>{taskStyles}</style>
+        <style>{`${taskStyles}\n${taskDetailStyles}`}</style>
         <div className="task-detail-page">
           <div className="task-detail-topbar">
             <button
@@ -2832,9 +3307,90 @@ export default function TasksPage() {
   return (
     <>
       <style>{taskStyles}</style>
-      <div className="task-page">
-        <section className="task-universe-shell">
-          <div className="task-universe-main">
+      <div className="task-page-topbar">
+        <div className="task-page-topbar-left">
+          <div className="task-page-topbar-dot"></div>
+          <div className="task-page-topbar-title">任务空间 · 星球视图</div>
+        </div>
+        <div className="task-page-topbar-ver">LIVE · v1.8.7</div>
+      </div>
+      <div className="task-page-layout">
+        <aside className="task-panel-left">
+          <div className="task-panel-head">
+            <h1>话题任务流</h1>
+            <div className="task-dim-text">优先按 strict-by-thread 的 topic 聚合，方便一眼看到同一话题下的任务链。</div>
+          </div>
+          {error ? <div className="task-empty">任务加载失败：{error}</div> : null}
+          {!error && tasks.length === 0 && !loading ? (
+            <div className="task-empty">还没有任务。发起一次扫描、流水线或飞书复杂请求后，这里就会出现记录。</div>
+          ) : null}
+          {featuredTopicGroups.length > 0 ? (
+            <div className="task-topic-strip">
+              {featuredTopicGroups.map((group) => {
+                const active = Boolean(selectedTopicGroup && selectedTopicGroup.key === group.key);
+                const focusTask = group.tasks[0];
+                return (
+                  <button
+                    key={group.key}
+                    type="button"
+                    className={`task-topic-card ${active ? 'active' : ''}`}
+                    onClick={() => navigate(`/tasks/${focusTask.id}`)}
+                  >
+                    <div className="task-topic-card-top">
+                      <span className={`task-status-badge ${group.counts.waiting > 0 ? 'warn' : 'info'}`}>
+                        {group.topicId ? '线程话题' : '独立任务'}
+                      </span>
+                      <span className="badge">{group.tasks.length} 个任务</span>
+                    </div>
+                    <div className="task-topic-card-title">{group.label}</div>
+                    <div className="task-topic-card-meta">{group.subtitle}</div>
+                    <div className="task-topic-card-stats" style={{ marginTop: 10 }}>
+                      <span className="badge running">{group.counts.running} 进行中</span>
+                      <span className="badge waiting">{group.counts.waiting} 等待中</span>
+                      <span className="badge done">{group.counts.done} 已完成</span>
+                      {group.counts.failed > 0 ? <span className="badge failed">{group.counts.failed} 失败</span> : null}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          <div className="task-list task-topic-groups">
+            {topicGroups.map((group) => (
+              <section key={group.key} className="task-topic-section">
+                <div className="task-topic-tasklist" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {group.tasks.map((task) => (
+                    <button
+                      key={task.id}
+                      className={`task-item ${task.id === selectedTask?.id ? 'active' : ''}`}
+                      data-status={task.status}
+                      type="button"
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                    >
+                      <div className="task-item-topline">
+                        <span className="task-item-tag t1">线程话题</span>
+                        {task.status === 'running' || task.status === 'waiting' ? (
+                          <span className="task-item-tag t2">线程动态</span>
+                        ) : null}
+                        <span className="task-item-count">{edgeLoadByTask.get(task.id) ?? 0} 关系</span>
+                      </div>
+                      <div className="task-title">{task.title}</div>
+                      <div className="task-meta">{getTopicLabel(task.topicId)} · {getKindLabel(task.kind)}</div>
+                      <div className="task-item-pls">
+                        <span className="task-item-pl pp">{task.status === 'running' ? '1' : '0'} 进行中</span>
+                        <span className="task-item-pl pw">{task.status === 'waiting' ? '1' : '0'} 等待中</span>
+                        <span className="task-item-pl pd">{task.status === 'done' ? '1' : '0'} 已完成</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </aside>
+
+        <div className="task-panel-center">
+          <div className="task-universe-shell">
             <div className="task-universe-body">
               {loading && planets.length === 0 ? (
                 <div className="task-empty">正在加载任务星图…</div>
@@ -2861,364 +3417,143 @@ export default function TasksPage() {
               )}
             </div>
           </div>
-          <aside className="task-universe-aside">
-            <div className="task-aside-card task-overview-side">
-              <div className="task-overview-side-top">
-                <div className="task-overview-copy">
-                  <span className="task-overview-kicker">Task Overview</span>
-                  <h1 className="task-overview-title">OpenCroc 任务星图</h1>
+
+          <div className="task-main">
+            <div className="task-main-head">
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                <div>
+                  <h1>星球内部</h1>
+                  <div className="task-dim-text">核心工位、阶段轨道、执行工位，以及实时事件时间线。</div>
                 </div>
-                <div className="task-overview-actions">
-                  <span className={`task-status-badge ${planetApiFallback ? 'warn' : 'info'}`}>
-                    {planetApiFallback ? '仅任务接口' : overviewUse3d ? '3D 实时星图' : '2D 编辑视图'}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <div className="task-view-switch">
                     <button
                       type="button"
-                      className={`task-tool-btn ${overviewViewMode === '3d' && !disable3D ? 'active' : ''}`}
-                      onClick={() => setOverviewViewMode('3d')}
+                      className={`${interiorViewMode === '3d' && !disable3D ? 'active' : ''}`}
+                      onClick={() => setInteriorViewMode('3d')}
                       disabled={disable3D}
                       title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
                     >
-                      3D 星图
+                      像素办公室
                     </button>
                     <button
                       type="button"
-                      className={`task-tool-btn ${overviewViewMode === '2d' ? 'active' : ''}`}
-                      onClick={() => setOverviewViewMode('2d')}
+                      className={`${interiorViewMode === '2d' ? 'active' : ''}`}
+                      onClick={() => setInteriorViewMode('2d')}
                     >
-                      2D 星图
+                      2D 环图
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    className="task-tool-btn"
-                    onClick={() => navigate(selectedTask ? `/universe?focus=${encodeURIComponent(selectedTask.id)}` : '/universe')}
-                  >
-                    全屏查看
-                  </button>
-                </div>
-              </div>
-              <div className="task-overview-lede">
-                把扫描、流水线和飞书复杂任务统一放进一张持续刷新的星图里。默认用 3D 总览看整体流动，需要建边、改关系或精确查看节点时再切回 2D 平面。
-              </div>
-              <div className="task-overview-pills">
-                <span className="task-overview-pill"><strong>{stats.total}</strong> 个任务已装载</span>
-                <span className="task-overview-pill"><strong>{stats.running + stats.waiting}</strong> 个任务正在活跃推进</span>
-                <span className="task-overview-pill"><span className="task-dot" style={{ background: '#ef9f27', marginRight: 0 }} /> 执行中会发光</span>
-                <span className="task-overview-pill"><span className="task-dot" style={{ background: '#8b82f4', marginRight: 0 }} /> 待确认会闪烁</span>
-                {overviewUpdatedAt ? (
-                  <span className="task-overview-pill">最近更新 {formatTime(overviewUpdatedAt)}</span>
-                ) : null}
-              </div>
-            </div>
-            <div className="task-kpi-list">
-              <div className="task-kpi">
-                <span className="label">任务总数</span>
-                <span className="value">{stats.total}</span>
-                <span className="hint">当前已进入星图的全部任务</span>
-              </div>
-              <div className="task-kpi">
-                <span className="label">执行中</span>
-                <span className="value" style={{ color: 'var(--task-orange)' }}>{stats.running}</span>
-                <span className="hint">仍在自动推进的任务</span>
-              </div>
-              <div className="task-kpi">
-                <span className="label">待确认</span>
-                <span className="value" style={{ color: 'var(--task-purple)' }}>{stats.waiting}</span>
-                <span className="hint">需要人工接力的节点</span>
-              </div>
-              <div className="task-kpi">
-                <span className="label">已完成</span>
-                <span className="value" style={{ color: 'var(--task-accent)' }}>{stats.done}</span>
-                <span className="hint">已经沉淀为历史记录</span>
-              </div>
-            </div>
-
-            <div className="task-legend">
-              <div className="task-legend-item"><span><span className="task-dot" style={{ background: '#ef9f27' }} /> 执行中</span><span>发光 + 进度环</span></div>
-              <div className="task-legend-item"><span><span className="task-dot" style={{ background: '#8b82f4' }} /> 待确认</span><span>需要你介入</span></div>
-              <div className="task-legend-item"><span><span className="task-dot" style={{ background: '#34d399' }} /> 已完成</span><span>结果已沉淀</span></div>
-              <div className="task-legend-item"><span><span className="task-dot" style={{ background: '#f87171' }} /> 失败</span><span>需要恢复处理</span></div>
-            </div>
-
-            <div className="task-tool-card">
-              <div className="task-tool-card-title">星球关系</div>
-              {planetApiFallback ? (
-                <div className="task-edge-reason">
-                  当前服务尚未部署 Planet API。关系编辑已禁用，待 `/api/planets` 上线后恢复。
-                </div>
-              ) : null}
-              <div className="task-tool-row">
-                <button
-                  type="button"
-                  className={`task-tool-btn ${linkMode ? 'active' : ''}`}
-                  onClick={() => {
-                    setLinkMode((current) => {
-                      const next = !current;
-                      if (!next) {
-                        setLinkSourceId(null);
-                      }
-                      return next;
-                    });
-                    setSelectedEdgeKey(null);
-                    setEdgeError(null);
-                  }}
-                  disabled={planetApiFallback || overviewViewMode === '3d'}
-                >
-                  {linkMode ? '退出连线模式' : '创建连线'}
-                </button>
-                <select
-                  className="task-tool-select"
-                  value={linkType}
-                  onChange={(event) => setLinkType(event.target.value as PlanetEdge['type'])}
-                  disabled={!linkMode || planetApiFallback || overviewViewMode === '3d'}
-                >
-                  <option value="related-to">{getEdgeTypeLabel('related-to')}</option>
-                  <option value="depends-on">{getEdgeTypeLabel('depends-on')}</option>
-                  <option value="supersedes">{getEdgeTypeLabel('supersedes')}</option>
-                </select>
-              </div>
-              <div className="task-edge-reason">
-                {planetApiFallback
-                  ? '当前处于降级模式，本次部署中不可用星球关系和自动依赖推断。'
-                  : overviewViewMode === '3d'
-                  ? '3D 视图下仅支持浏览与聚焦星球。需要创建/编辑关系请切换到 2D 星图。'
-                  : linkMode
-                  ? (linkSourceId
-                    ? `已锁定起点：${planets.find((planet) => planet.id === linkSourceId)?.title || linkSourceId}。再点击另一颗星球即可建立“${getEdgeTypeLabel(linkType)}”关系。`
-                    : '连线模式已开启。先点一颗星球作为起点，再点另一颗作为终点。')
-                  : '系统会根据任务文本、时间顺序、任务类型和共享路径自动推断关系。'}
-              </div>
-              {selectedEdge ? (
-                <>
-                  <div className="task-edge-reason">
-                    已选关系：{getPlanetLabel(planets, selectedEdge.fromPlanetId)} → {getPlanetLabel(planets, selectedEdge.toPlanetId)} · {getEdgeTypeLabel(selectedEdge.type)} · {selectedEdge.source === 'manual' ? '手动' : '自动'}
-                  </div>
-                  {selectedEdge.reason ? (
-                    <div className="task-edge-reason">{selectedEdge.reason}</div>
+                  {interiorFallback ? (
+                    <span className="task-status-badge info">本地详情</span>
                   ) : null}
-                  <div className="task-tool-row" style={{ marginTop: 10 }}>
-                    {selectedEdge.source === 'manual' ? (
-                      <>
-                        <button
-                          type="button"
-                          className="task-tool-btn"
-                          onClick={() => { void handleUpdateSelectedEdge(); }}
-                          disabled={edgeBusy || linkType === selectedEdge.type}
-                        >
-                          更新手动关系
-                        </button>
-                        <button
-                          type="button"
-                          className="task-tool-btn danger"
-                          onClick={() => { void handleDeleteSelectedEdge(); }}
-                          disabled={edgeBusy}
-                        >
-                          删除手动关系
-                        </button>
-                      </>
-                    ) : (
-                      <span className="task-edge-reason">自动关系当前仅支持查看。</span>
-                    )}
-                  </div>
-                </>
+                </div>
+              </div>
+              {selectedTask ? (
+                <div style={{ fontSize: '12px', color: 'var(--task-muted)', marginTop: '18px' }}>
+                  对话星球 › <span style={{ color: 'var(--task-dim)', fontWeight: 500 }}>{interiorViewMode === '3d' ? '像素办公室' : '2D 环图'}</span>
+                </div>
               ) : null}
-              {edgeError ? <div className="task-edge-reason" style={{ color: 'var(--task-red)' }}>{edgeError}</div> : null}
             </div>
-
-            <div className="task-active-list">
-              {activePlanets.length > 0 ? activePlanets.map((planet) => (
-	                <button
-	                  key={planet.id}
-	                  type="button"
-	                  className="task-active-item"
-	                  data-status={planet.status}
-	                  style={{ color: 'inherit', textAlign: 'left', cursor: 'pointer', background: 'var(--task-card)' }}
-	                  onClick={() => navigate(`/tasks/${planet.id}`)}
-	                >
-                  <div style={{ fontWeight: 700 }}>{planet.title}</div>
-                  <div className="meta">
-                    {getStatusLabel(planet.status)} · {planet.progress}% · {planet.currentStageLabel ? getStageLabel(planet.currentStageLabel, planet.currentStageKey) : getKindLabel(planet.kind)}
+            
+            <div className="task-main-body">
+              {selectedTask && selectedPlanet ? (
+                interior && interiorTaskId === selectedTask.id && !interiorError ? (
+                  interiorViewMode === '3d' && !disable3D ? (
+                    <PlanetInteriorScene3D
+                      planet={selectedPlanet}
+                      interior={interior}
+                      formatTime={formatTime}
+                    />
+                  ) : (
+                    <PlanetInterior
+                      planet={selectedPlanet}
+                      interior={interior}
+                      formatTime={formatTime}
+                    />
+                  )
+                ) : interiorLoading ? (
+                  <div className="task-empty">正在加载星球内部详情…</div>
+                ) : (
+                  <div className="task-empty">
+                    星球内部详情加载失败{interiorError ? `：${interiorError}` : '。'}
                   </div>
-                </button>
-              )) : (
-                <div className="task-empty">当前没有活跃星球。</div>
+                )
+              ) : (
+                <div className="task-empty">{loading ? '正在加载任务…' : '还没有选中任务。'}</div>
               )}
             </div>
-          </aside>
-        </section>
+          </div>
+        </div>
 
-        <aside className="task-shell task-panel">
-          <div className="task-panel-head">
-            <h1 style={{ margin: 0, fontSize: 18 }}>话题任务流</h1>
-            <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
-              列表不再只按时间平铺，而是优先按 strict-by-thread 的 topic 聚合，方便你一眼看到同一话题下的任务簇。
-            </div>
-          </div>
-          <div className="task-panel-body">
-            {error ? <div className="task-empty">任务加载失败：{error}</div> : null}
-            {!error && tasks.length === 0 && !loading ? (
-              <div className="task-empty">还没有任务。发起一次扫描、流水线或飞书复杂请求后，这里就会出现记录。</div>
-            ) : null}
-            {featuredTopicGroups.length > 0 ? (
-              <div className="task-topic-strip">
-                {featuredTopicGroups.map((group) => {
-                  const active = Boolean(selectedTopicGroup && selectedTopicGroup.key === group.key);
-                  const focusTask = group.tasks[0];
-                  return (
-                    <button
-                      key={group.key}
-                      type="button"
-                      className={`task-topic-card ${active ? 'active' : ''}`}
-                      onClick={() => navigate(`/tasks/${focusTask.id}`)}
-                    >
-                      <div className="task-topic-card-top">
-                        <span className={`task-status-badge ${group.counts.waiting > 0 ? 'warn' : 'info'}`}>
-                          {group.topicId ? '线程话题' : '独立任务'}
-                        </span>
-                        <span className="badge">{group.tasks.length} 个任务</span>
-                      </div>
-                      <div className="task-topic-card-title">{group.label}</div>
-                      <div className="task-topic-card-meta">{group.subtitle}</div>
-                      <div className="task-topic-card-stats" style={{ marginTop: 10 }}>
-                        <span className="badge running">{group.counts.running} 进行中</span>
-                        <span className="badge waiting">{group.counts.waiting} 等待中</span>
-                        <span className="badge done">{group.counts.done} 已完成</span>
-                        {group.counts.failed > 0 ? <span className="badge failed">{group.counts.failed} 失败</span> : null}
-                      </div>
-                    </button>
-                  );
-                })}
+        <aside className="task-panel-right">
+          {selectedTask && interior && interiorTaskId === selectedTask.id ? (
+            <>
+              <div className="task-right-card">
+                <div className="task-right-card-header">
+                  <span className="task-right-card-title">任务摘要</span>
+                  <span className={`task-right-card-badge ${selectedTask.status === 'done' ? 'done' : 'info'}`}>
+                    {getStatusLabel(selectedTask.status)}
+                  </span>
+                </div>
+                <div className="task-dim-text" style={{ fontSize: '12.5px', lineHeight: 1.7, color: 'var(--task-text)' }}>
+                  {interior.summary ? interior.summary.split('\n').map((line, i) => (
+                    <span key={i}>{line}<br /></span>
+                  )) : '任务仍在生成最终结果。'}
+                </div>
               </div>
-            ) : null}
-            <div className="task-list task-topic-groups">
-              {topicGroups.map((group) => (
-                <section key={group.key} className="task-topic-section">
-                  <div className="task-topic-head">
-                    <div className="task-topic-head-copy">
-                      <div className="task-overview-kicker">话题簇</div>
-                      <div className="task-topic-section-title">{group.label}</div>
-                      <div className="task-topic-section-meta">
-                        {group.subtitle} · 最近更新 {formatTime(group.latestUpdatedAt)}
+
+              <div className="task-right-card">
+                <div className="task-right-card-header">
+                  <span className="task-right-card-title">执行工位</span>
+                  <span className="task-right-card-badge info">{interior.agents.length} 个</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px' }}>
+                  {interior.agents.map((agent) => (
+                    <div key={agent.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px', padding: '7px', border: '1px solid var(--task-border)', borderRadius: '8px', background: 'var(--task-bg)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {agent.name}
+                        </div>
+                        <div style={{ width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0, background: agent.status === 'done' ? 'var(--task-accent)' : 'var(--task-muted)', opacity: agent.status === 'done' ? 1 : 0.4 }} />
+                      </div>
+                      <div style={{ fontSize: '9px', fontWeight: 600, color: agent.status === 'done' ? 'var(--task-accent)' : 'var(--task-muted)' }}>
+                        {getAgentStatusLabel(agent.status)}
+                      </div>
+                      <div style={{ fontSize: '9px', color: 'var(--task-dim)', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {agent.currentAction || '待命中。'}
                       </div>
                     </div>
-                    <div className="task-topic-head-stats">
-                      <span className="task-topic-code">
-                        {group.topicId ? shortenMiddle(group.topicId, 18, 10) : '独立任务'}
-                      </span>
-                      <span className="badge">{group.tasks.length} 个任务</span>
-                      <span className="badge running">{group.counts.running} 进行中</span>
-                      {group.counts.waiting > 0 ? <span className="badge waiting">{group.counts.waiting} 等待中</span> : null}
+                  ))}
+                </div>
+              </div>
+
+              <div className="task-right-card">
+                <div className="task-right-card-header">
+                  <span className="task-right-card-title">事件时间线</span>
+                  <span className="task-right-card-badge error">{interior.events.length} 条</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {[...interior.events].reverse().slice(0, 10).map((event, i) => (
+                    <div key={i} style={{ position: 'relative', padding: '11px 0 11px 20px', borderLeft: '2px solid var(--task-border)' }}>
+                      <div style={{ position: 'absolute', left: '-5px', top: '15px', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--task-red)', boxShadow: '0 0 6px rgba(196, 113, 59, 0.3)' }} />
+                      <div style={{ fontSize: '12px', color: 'var(--task-text)', lineHeight: 1.6, marginBottom: '4px' }}>
+                        {event.message}
+                      </div>
+                      <div style={{ fontFamily: 'JetBrains Mono', fontSize: '10px', color: 'var(--task-muted)' }}>
+                        {formatTime(event.time)} · {event.type}
+                      </div>
                     </div>
-                  </div>
-                  <div className="task-topic-tasklist">
-                    {group.tasks.map((task) => (
-                      <button
-                        key={task.id}
-                        className={`task-item ${task.id === selectedTask?.id ? 'active' : ''}`}
-                        data-status={task.status}
-                        type="button"
-                        onClick={() => navigate(`/tasks/${task.id}`)}
-                      >
-                        <div className="task-item-topline">
-                          <div className="task-item-topline-left">
-                            <span className="task-item-kicker">{task.id === group.tasks[0]?.id ? '主任务' : '子任务'}</span>
-                            <span className="task-topic-code">{getTopicLabel(task.topicId)}</span>
-                          </div>
-                          <div className="task-item-side">更新于 {formatTime(task.updatedAt)}</div>
-                        </div>
-                        <div className="task-item-title-row">
-                          <div className="task-title">{task.title}</div>
-                          <div className="task-item-side">
-                            {edgeLoadByTask.get(task.id) ?? 0} 条关系
-                          </div>
-                        </div>
-                        <div className="task-meta">
-                          {getKindLabel(task.kind)} · {getStatusLabel(task.status)}
-                          {task.currentStageKey ? ` · 阶段 ${getStageKeyLabel(task.currentStageKey)}` : ''}
-                        </div>
-                        {task.summary || task.sourceText ? (
-                          <div className="task-item-summary">{task.summary || task.sourceText}</div>
-                        ) : null}
-                        <div className="task-progress"><span style={{ width: `${task.progress}%` }} /></div>
-                        <div className="task-badges">
-                          <span className={`badge ${task.status}`}>{task.progress}%</span>
-                          {task.waitingFor ? <span className="badge waiting">等待：{task.waitingFor}</span> : null}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ))}
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="task-empty">
+              {loading ? '正在加载...' : '请选择一个星球查看详情。'}
             </div>
-          </div>
+          )}
         </aside>
-
-        <main className="task-shell task-main">
-          <div className="task-main-head">
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: 18 }}>星球内部</h1>
-                <div style={{ marginTop: 6, color: 'var(--task-dim)', fontSize: 13 }}>
-                  {interiorViewMode === '3d'
-                    ? '这里展开的是当前星球的像素办公室：核心工位、阶段轨道、执行工位，以及实时事件时间线。'
-                    : '这里展开的是当前星球的内部结构：阶段环、执行工位，以及实时事件时间线。'}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <div className="task-view-switch">
-                  <button
-                    type="button"
-                    className={`task-tool-btn ${interiorViewMode === '3d' && !disable3D ? 'active' : ''}`}
-                    onClick={() => setInteriorViewMode('3d')}
-                    disabled={disable3D}
-                    title={disable3D ? '3D 视图在当前设备/内置浏览器环境下容易白屏，已默认切换到 2D。' : undefined}
-                  >
-                    像素办公室
-                  </button>
-                  <button
-                    type="button"
-                    className={`task-tool-btn ${interiorViewMode === '2d' ? 'active' : ''}`}
-                    onClick={() => setInteriorViewMode('2d')}
-                  >
-                    2D 环图
-                  </button>
-                </div>
-                {interiorFallback ? (
-                  <span className="task-status-badge info">本地详情</span>
-                ) : null}
-              </div>
-            </div>
-          </div>
-          <div className="task-main-body">
-            {selectedTask && selectedPlanet ? (
-              interior && interiorTaskId === selectedTask.id && !interiorError ? (
-                interiorViewMode === '3d' && !disable3D ? (
-                  <PlanetInteriorScene3D
-                    planet={selectedPlanet}
-                    interior={interior}
-                    formatTime={formatTime}
-                  />
-                ) : (
-                  <PlanetInterior
-                    planet={selectedPlanet}
-                    interior={interior}
-                    formatTime={formatTime}
-                  />
-                )
-              ) : interiorLoading ? (
-                <div className="task-empty">正在加载星球内部详情…</div>
-              ) : (
-                <div className="task-empty">
-                  星球内部详情加载失败{interiorError ? `：${interiorError}` : '。'}
-                </div>
-              )
-            ) : (
-              <div className="task-empty">{loading ? '正在加载任务…' : '还没有选中任务。'}</div>
-            )}
-          </div>
-        </main>
       </div>
     </>
   );

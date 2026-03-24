@@ -9,3 +9,4 @@ Failed to start server: Error: listen EADDRINUSE: address already in use 127.0.0
   address: '127.0.0.1',
   port: 8766
 }
+^C

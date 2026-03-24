@@ -167,7 +167,7 @@ export default function PlanetInteriorScene3D({ planet, interior, formatTime }: 
         </div>
       </section>
 
-      <div className="planet-interior-grid">
+      <div className="planet-interior-grid" style={{ gridTemplateColumns: '1fr' }}>
         <div className="planet-visual-stack">
           <div className="planet-visual-card planet-visual-card-3d pixel-office-panel">
             <div ref={containerRef} className="planet-interior-scene">
@@ -217,46 +217,6 @@ export default function PlanetInteriorScene3D({ planet, interior, formatTime }: 
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="planet-side-stack">
-          <div className="planet-summary-card pixel-office-panel">
-            <div className="planet-card-head">
-              <h3>任务摘要</h3>
-              <span>{getStatusLabel(planet.status)}</span>
-            </div>
-            <div className="task-summary">{renderSummary(interior.summary)}</div>
-          </div>
-
-          <div className="planet-agents-card pixel-office-panel">
-            <div className="planet-card-head">
-              <h3>执行工位</h3>
-              <span>{interior.agents.length} 个</span>
-            </div>
-            <div className="planet-agent-list">
-              {interior.agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className={`planet-agent-card pixel-office-panel ${agent.status} ${agent.id === hoveredAgentId ? 'active' : ''}`}
-                >
-                  <div className="planet-agent-top">
-                    <div className="planet-agent-title">
-                      <img className="planet-agent-pixel" src={PIXEL_ASSETS.avatar} alt="" aria-hidden="true" />
-                      <strong>{agent.name}</strong>
-                    </div>
-                    <span>{getAgentStatusLabel(agent.status)}</span>
-                  </div>
-                  <div className="planet-agent-meta">
-                    {getRoleLabel(agent.role)} · {getStageLabel(agent.stageLabel, agent.stageKey)}
-                    {typeof agent.progress === 'number' ? ` · ${agent.progress}%` : ''}
-                  </div>
-                  <p>{agent.currentAction || '待命中。'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <EventTimeline events={interior.events} formatTime={formatTime} />
         </div>
       </div>
     </div>

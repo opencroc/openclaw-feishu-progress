@@ -51,7 +51,7 @@ export default function PlanetInterior({ planet, interior, formatTime }: PlanetI
         </div>
       </section>
 
-      <div className="planet-interior-grid">
+      <div className="planet-interior-grid" style={{ gridTemplateColumns: '1fr' }}>
         <div className="planet-visual-stack">
           <div className="planet-visual-card">
             <svg className="planet-interior-svg" viewBox={`0 0 ${CORE_SIZE} ${CORE_SIZE}`} role="img" aria-label={`${planet.title} interior`}>
@@ -118,40 +118,6 @@ export default function PlanetInterior({ planet, interior, formatTime }: PlanetI
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="planet-side-stack">
-          <div className="planet-summary-card">
-            <div className="planet-card-head">
-              <h3>任务摘要</h3>
-              <span>{getStatusLabel(planet.status)}</span>
-            </div>
-            <div className="task-summary">{renderSummary(interior.summary)}</div>
-          </div>
-
-          <div className="planet-agents-card">
-            <div className="planet-card-head">
-              <h3>执行工位</h3>
-              <span>{interior.agents.length} 个</span>
-            </div>
-            <div className="planet-agent-list">
-              {interior.agents.map((agent) => (
-                <div key={agent.id} className={`planet-agent-card ${agent.status}`}>
-                  <div className="planet-agent-top">
-                    <strong>{agent.name}</strong>
-                    <span>{getAgentStatusLabel(agent.status)}</span>
-                  </div>
-                  <div className="planet-agent-meta">
-                    {getRoleLabel(agent.role)} · {getStageLabel(agent.stageLabel, agent.stageKey)}
-                    {typeof agent.progress === 'number' ? ` · ${agent.progress}%` : ''}
-                  </div>
-                  <p>{agent.currentAction || '待命中。'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <EventTimeline events={interior.events} formatTime={formatTime} />
         </div>
       </div>
     </div>
