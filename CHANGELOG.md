@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.7] - 2026-03-24
+
+### Added
+- Waiting Feishu tasks now include a detail-page fallback prompt and confirmation UI, so users can resume a task even if the Feishu card button does not respond.
+- Task detail pages now expose structured waiting decisions with local confirmation actions and optional free-text support.
+
+### Fixed
+- Detail-page decision submissions are now idempotent after a task has already resumed.
+- OpenClaw relay events can now resume waiting tasks through the shared decision handler.
+
 ## [1.8.6] - 2026-03-21
 
 ### Fixed
