@@ -55,6 +55,48 @@ describe('registerAgentRoutes', () => {
     expect(updated?.events.at(-1)?.message).toContain('Decision received: 继续执行');
   });
 
+  it('treats repeated detail-page decisions as idempotent once the task has resumed', async () => {
+    const { app, office } = createApp();
+    const task = office.createChatTask('Decision task');
+
+    office.activateTask(task.id);
+    office.markTaskRunning('receive', 'Task accepted', 10);
+    office.waitOnTask('product direction', 'Need a direction choice', 42, {
+      prompt: 'Choose a path',
+      options: [
+        { id: 'continue', label: '继续执行' },
+        { id: 'report', label: '只生成报告' },
+      ],
+    });
+    office.activateTask(null);
+
+    const first = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/decision`,
+      payload: {
+        optionId: 'continue',
+      },
+    });
+    expect(first.statusCode).toBe(200);
+
+    const second = await app.inject({
+      method: 'POST',
+      url: `/api/tasks/${task.id}/decision`,
+      payload: {
+        optionId: 'continue',
+      },
+    });
+
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toMatchObject({
+      ok: true,
+      alreadyResolved: true,
+      decision: {
+        optionId: 'continue',
+      },
+    });
+  });
+
   it('rejects invalid decision options', async () => {
     const { app, office } = createApp();
     const task = office.createChatTask('Decision task');

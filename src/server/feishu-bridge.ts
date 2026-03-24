@@ -149,6 +149,11 @@ function formatDecision(decision: TaskDecisionPrompt | undefined): string | unde
   return lines.join('\n');
 }
 
+function formatWaitingFallbackHint(link?: string): string | undefined {
+  if (!link) return undefined;
+  return '如果飞书按钮无响应，请打开详情页继续确认。';
+}
+
 function formatWaitingText(task: TaskRecord, link?: string): string {
   const latest = task.events[task.events.length - 1];
   const decisionText = formatDecision(task.decision);
@@ -156,6 +161,7 @@ function formatWaitingText(task: TaskRecord, link?: string): string {
     `任务等待确认：${task.title}`,
     `当前状态：${latest?.message || task.waitingFor || '等待用户输入'}`,
     decisionText,
+    formatWaitingFallbackHint(link),
     link ? `详情：${link}` : undefined,
   ].filter(Boolean);
   return parts.join('\n');
@@ -261,6 +267,19 @@ function createTaskCard(message: FeishuOutboundMessage): FeishuCardPayload {
         ],
       });
     }
+  }
+
+  const waitingFallbackHint = message.kind === 'task-waiting'
+    ? formatWaitingFallbackHint(message.link)
+    : undefined;
+  if (waitingFallbackHint) {
+    elements.push({
+      tag: 'div',
+      text: {
+        tag: 'lark_md',
+        content: `**兜底方式**：${waitingFallbackHint}`,
+      },
+    });
   }
 
   if (message.summary) {

@@ -195,6 +195,11 @@ describe('FeishuProgressBridge', () => {
       optionId: '1',
       optionLabel: '继续分析',
     });
+    expect((sent[1]?.card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('如果飞书按钮无响应'))).toBe(true);
+    expect((sent[1]?.card as any).body.elements.some((element: any) => {
+      const behavior = element.behaviors?.[0];
+      return behavior?.type === 'open_url' && behavior?.default_url === 'https://demo.opencroc.ai/tasks/task_123';
+    })).toBe(true);
     expect((sent[2]?.card as any).body.elements.some((element: any) => String(element.text?.content || '').includes('结果摘要'))).toBe(true);
   });
 

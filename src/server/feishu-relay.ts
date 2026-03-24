@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { CrocOffice } from './croc-office.js';
 import type { FeishuBridgeConfig, FeishuProgressBridge } from './feishu-bridge.js';
 import { isComplexRequest, startComplexFeishuChatTask } from './feishu-task-start.js';
+import { submitTaskDecision } from './task-decision.js';
 import { createFeishuRelayAuth } from './relay-auth.js';
 
 interface FeishuRelayBody {
@@ -19,11 +20,13 @@ interface FeishuRelayBody {
 
 interface FeishuRelayEventBody {
   taskId?: string;
-  type?: 'progress' | 'done' | 'failed';
+  type?: 'progress' | 'done' | 'failed' | 'decision';
   stageKey?: 'receive' | 'understand' | 'gather' | 'generate' | 'finalize';
   detail?: string;
   progress?: number;
   summary?: string;
+  optionId?: string;
+  freeText?: string;
 }
 
 export function registerFeishuRelayRoutes(
@@ -163,6 +166,29 @@ export function registerFeishuRelayRoutes(
       const detail = req.body.detail?.trim() || 'OpenClaw 处理失败';
       const updated = await office.relayTaskFailed(taskId, detail, true);
       return { ok: true, task: updated };
+    }
+
+    if (type === 'decision') {
+      const result = await submitTaskDecision(office, taskId, {
+        optionId: req.body.optionId,
+        freeText: req.body.freeText,
+        detail: req.body.detail,
+        progress: req.body.progress,
+      }, {
+        idempotentIfNotWaiting: true,
+        waitForDelivery: true,
+      });
+
+      if (!result.ok) {
+        return reply.code(result.statusCode).send({ ok: false, error: result.error });
+      }
+
+      return {
+        ok: true,
+        alreadyResolved: result.alreadyResolved === true,
+        decision: result.decision,
+        task: result.task,
+      };
     }
 
     return reply.code(400).send({ ok: false, error: 'Unsupported relay event type' });

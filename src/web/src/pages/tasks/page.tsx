@@ -136,6 +136,70 @@ body {
 .task-detail-copy p {
   margin: 0;
 }
+.task-decision-shell {
+  background:
+    radial-gradient(circle at top left, rgba(123, 106, 137, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(247, 240, 230, 0.95));
+}
+.task-decision-body {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.task-decision-prompt {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.45;
+}
+.task-decision-help {
+  color: var(--task-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.task-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.task-decision-option {
+  min-width: min(240px, 100%);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.task-decision-option-title {
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.task-decision-option-copy {
+  color: var(--task-dim);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: normal;
+}
+.task-decision-note-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.task-decision-note {
+  width: 100%;
+  min-height: 96px;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid var(--task-border);
+  border-radius: 16px;
+  background: rgba(255, 251, 246, 0.9);
+  color: var(--task-text);
+  font: inherit;
+  padding: 12px 14px;
+}
 .task-detail-main .task-main-body {
   padding: 18px;
 }
@@ -1871,10 +1935,39 @@ function buildFallbackInterior(task: TaskRecord): PlanetInteriorData {
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
+  const bodyText = await response.text();
+  const payload = bodyText
+    ? (() => {
+        try {
+          return JSON.parse(bodyText);
+        } catch {
+          return bodyText;
+        }
+      })()
+    : undefined;
+
   if (!response.ok) {
+    if (payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string') {
+      throw new Error(payload.error);
+    }
+    if (typeof payload === 'string' && payload.trim()) {
+      throw new Error(payload.trim());
+    }
     throw new Error(`${response.status} ${response.statusText}`);
   }
-  return response.json() as Promise<T>;
+  return payload as T;
+}
+
+interface TaskDecisionApiResponse {
+  ok: true;
+  alreadyResolved?: boolean;
+  detail?: string;
+  decision: {
+    optionId?: string;
+    optionLabel?: string;
+    freeText?: string;
+  };
+  task: TaskRecord;
 }
 
 export default function TasksPage() {
@@ -1904,6 +1997,9 @@ export default function TasksPage() {
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string | null>(null);
   const [edgeBusy, setEdgeBusy] = useState(false);
   const [edgeError, setEdgeError] = useState<string | null>(null);
+  const [decisionBusy, setDecisionBusy] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
+  const [decisionFreeText, setDecisionFreeText] = useState('');
 
   useEffect(() => {
     if (disable3D && overviewViewMode === '3d') {
@@ -2074,6 +2170,12 @@ export default function TasksPage() {
     return tasks[0] ?? null;
   }, [selectedTaskId, tasks]);
 
+  useEffect(() => {
+    setDecisionBusy(false);
+    setDecisionError(null);
+    setDecisionFreeText('');
+  }, [selectedTask?.id, selectedTask?.status]);
+
   const stats = useMemo(() => ({
     total: planets.length,
     running: planets.filter((planet) => planet.status === 'running').length,
@@ -2233,6 +2335,34 @@ export default function TasksPage() {
     }
   }
 
+  async function handleSubmitTaskDecision(optionId?: string): Promise<void> {
+    if (!selectedTask) return;
+
+    const freeText = decisionFreeText.trim() || undefined;
+    setDecisionBusy(true);
+    setDecisionError(null);
+
+    try {
+      const response = await fetchJson<TaskDecisionApiResponse>(`/api/tasks/${selectedTask.id}/decision`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          optionId,
+          freeText,
+        }),
+      });
+
+      startTransition(() => {
+        setTasks((current) => upsertTask(current, response.task));
+        setPlanets((current) => upsertPlanet(current, response.task));
+      });
+    } catch (actionError) {
+      setDecisionError(actionError instanceof Error ? actionError.message : String(actionError));
+    } finally {
+      setDecisionBusy(false);
+    }
+  }
+
   const selectedPlanet = useMemo(() => {
     if (!selectedTask) return null;
     return planets.find((planet) => planet.id === selectedTask.id) ?? fallbackPlanetFromTask(selectedTask, 0);
@@ -2346,6 +2476,8 @@ export default function TasksPage() {
   const selectedTopicActiveCount = selectedTopicGroup
     ? selectedTopicGroup.counts.running + selectedTopicGroup.counts.waiting
     : 0;
+  const selectedDecisionOptions = selectedTask?.decision?.options ?? [];
+  const canSubmitFreeTextDecision = selectedTask?.decision?.allowFreeText === true && decisionFreeText.trim().length > 0;
 
   if (detailMode) {
     return (
@@ -2401,6 +2533,67 @@ export default function TasksPage() {
                   </div>
                 ) : null}
               </section>
+
+              {selectedTask.status === 'waiting' ? (
+                <section className="task-shell task-decision-shell">
+                  <div className="task-panel-head">
+                    <h1 style={{ margin: 0, fontSize: 16 }}>继续任务</h1>
+                  </div>
+                  <div className="task-decision-body">
+                    <h2 className="task-decision-prompt">
+                      {selectedTask.decision?.prompt || selectedTask.waitingFor || '这个任务正在等待你的确认'}
+                    </h2>
+                    <div className="task-decision-help">
+                      如果飞书卡片按钮没有响应，直接在这里确认也能继续任务。这里提交的仍然是同一个后端决策接口，任务状态会立刻恢复推进，并尽量同步回飞书。
+                    </div>
+                    {selectedDecisionOptions.length > 0 ? (
+                      <div className="task-decision-actions">
+                        {selectedDecisionOptions.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            className="task-tool-btn task-decision-option"
+                            disabled={decisionBusy}
+                            onClick={() => { void handleSubmitTaskDecision(option.id); }}
+                          >
+                            <span className="task-decision-option-title">{option.label}</span>
+                            <span className="task-decision-option-copy">
+                              {option.description || `决策 ID：${option.id}`}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {selectedTask.decision?.allowFreeText === true ? (
+                      <div className="task-decision-note-wrap">
+                        <textarea
+                          className="task-decision-note"
+                          value={decisionFreeText}
+                          onChange={(event) => setDecisionFreeText(event.target.value)}
+                          placeholder="如果这个确认点需要补充说明，可以在这里填写。"
+                          disabled={decisionBusy}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="task-tool-btn"
+                            disabled={decisionBusy || !canSubmitFreeTextDecision}
+                            onClick={() => { void handleSubmitTaskDecision(); }}
+                          >
+                            提交文字确认
+                          </button>
+                          <span className="task-status-badge info">可选补充说明会和确认动作一起提交</span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {selectedDecisionOptions.length === 0 && selectedTask.decision?.allowFreeText !== true ? (
+                      <span className="task-status-badge warn">当前等待状态没有可直接提交的本地确认选项。</span>
+                    ) : null}
+                    {decisionBusy ? <span className="task-status-badge info">正在提交确认…</span> : null}
+                    {decisionError ? <span className="task-status-badge warn">{decisionError}</span> : null}
+                  </div>
+                </section>
+              ) : null}
 
               <section className="task-shell task-topic-spotlight">
                 <div className="task-topic-spotlight-grid">

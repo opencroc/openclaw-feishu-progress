@@ -189,7 +189,9 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice, fe
 
   // POST /api/tasks/:id/decision — submit a waiting-state decision and resume task progress
   app.post<{ Params: { id: string }; Body: { optionId?: string; freeText?: string; detail?: string; progress?: number } }>('/api/tasks/:id/decision', async (req, reply) => {
-    const result = await submitTaskDecision(office, req.params.id, req.body);
+    const result = await submitTaskDecision(office, req.params.id, req.body, {
+      idempotentIfNotWaiting: true,
+    });
     if (!result.ok) {
       reply.code(result.statusCode).send({ error: result.error });
       return;
@@ -197,6 +199,8 @@ export function registerAgentRoutes(app: FastifyInstance, office: CrocOffice, fe
 
     return {
       ok: true,
+      alreadyResolved: result.alreadyResolved === true,
+      detail: result.detail,
       decision: result.decision,
       task: result.task,
     };

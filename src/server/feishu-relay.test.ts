@@ -133,6 +133,56 @@ describe('registerFeishuRelayRoutes', () => {
     expect(send.mock.calls.some((call) => call[0].kind === 'task-complete' && call[0].presentation === 'text')).toBe(false);
   });
 
+  it('accepts OpenClaw relay decision events and resumes a waiting task', async () => {
+    const send = vi.fn(async (_message: FeishuOutboundMessage) => ({ messageId: `om_${send.mock.calls.length + 1}` }));
+    const { app, office } = createApp(send);
+    const task = office.createChatTask('Relay decision task');
+
+    office.bindTaskToFeishu(task.id, {
+      chatId: 'oc_relay_decision_1',
+      requestId: 'om_relay_decision_1',
+      replyToMessageId: 'om_relay_decision_1',
+      rootMessageId: 'om_relay_decision_1',
+      source: 'feishu',
+    });
+    office.activateTask(task.id);
+    await office.markTaskRunningAndWait('receive', 'Task accepted from OpenClaw relay', 8);
+    office.waitOnTask('real smoke decision', 'Smoke waiting: please click one of the buttons in Feishu', 68, {
+      prompt: '真实 smoke：请选择下一步',
+      options: [
+        { id: 'continue', label: '继续执行' },
+        { id: 'report', label: '只生成报告' },
+      ],
+    });
+    office.activateTask(null);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/feishu/relay/event',
+      payload: {
+        taskId: task.id,
+        type: 'decision',
+        optionId: 'continue',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      ok: true,
+      alreadyResolved: false,
+      decision: {
+        optionId: 'continue',
+        optionLabel: '继续执行',
+      },
+    });
+
+    const updated = office.getTask(task.id);
+    expect(updated?.status).toBe('running');
+    expect(updated?.waitingFor).toBeUndefined();
+    expect(updated?.decision).toBeUndefined();
+    expect(updated?.events.at(-1)?.message).toContain('Decision received: 继续执行');
+  });
+
   it('returns 502 when the relayed request cannot send the first Feishu ack', async () => {
     const send = vi.fn(async (message: FeishuOutboundMessage) => {
       throw new Error(`delivery failed for ${message.kind}`);

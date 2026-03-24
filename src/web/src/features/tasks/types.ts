@@ -16,6 +16,18 @@ export type TaskEvent = {
   stageKey?: string;
 };
 
+export type TaskDecisionOption = {
+  id: string;
+  label: string;
+  description?: string;
+};
+
+export type TaskDecisionPrompt = {
+  prompt: string;
+  options: TaskDecisionOption[];
+  allowFreeText?: boolean;
+};
+
 export type TaskRecord = {
   id: string;
   kind: string;
@@ -28,6 +40,7 @@ export type TaskRecord = {
   stages: TaskStage[];
   summary?: string;
   waitingFor?: string;
+  decision?: TaskDecisionPrompt;
   updatedAt: number;
   createdAt: number;
   completedAt?: number;
