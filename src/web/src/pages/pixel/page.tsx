@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { publicAsset } from '@shared/assets';
 
 const pixelStyles = `
 :root {
@@ -209,23 +208,11 @@ body {
   height: 100%;
   padding: 24px;
   overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(96, 165, 250, 0.14), transparent 24%),
+    radial-gradient(circle at 82% 22%, rgba(52, 211, 153, 0.12), transparent 20%),
+    linear-gradient(180deg, rgba(17, 24, 39, 0.26), rgba(15, 23, 42, 0.4));
 }
-.pixel-stage .asset {
-  position: absolute;
-  image-rendering: pixelated;
-  user-select: none;
-  pointer-events: none;
-}
-.desk-asset {
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  width: min(760px, 92%);
-  opacity: 0.92;
-}
-.server-asset { left: 36px; bottom: 26px; width: 100px; }
-.coffee-asset { right: 42px; bottom: 34px; width: 88px; }
-.walls-asset { right: 24px; top: 24px; width: 220px; opacity: 0.85; }
 .pixel-kpis {
   position: absolute;
   left: 18px;
@@ -501,10 +488,6 @@ export default function PixelPage() {
           </div>
           <div id="pixel-view" className="pixel-view hidden">
             <div className="pixel-stage">
-              <img className="asset desk-asset" src={publicAsset('star/desk-v3.webp')} alt="desk" />
-              <img className="asset server-asset" src={publicAsset('botreview/server.gif')} alt="server" />
-              <img className="asset coffee-asset" src={publicAsset('botreview/coffee-machine.gif')} alt="coffee" />
-              <img className="asset walls-asset" src={publicAsset('botreview/walls.png')} alt="walls" />
               <div className="pixel-kpis">
                 <div className="pixel-kpi"><div className="t">Working</div><div className="v" id="kpi-working">0</div></div>
                 <div className="pixel-kpi errors"><div className="t">Errors</div><div className="v" id="kpi-errors">0</div></div>

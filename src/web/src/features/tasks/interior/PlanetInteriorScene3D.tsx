@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import EventTimeline from './EventTimeline';
-import { publicAsset } from '@shared/assets';
 import {
   getAgentStatusLabel,
   getKindLabel,
@@ -24,15 +22,6 @@ type PlanetInteriorScene3DProps = {
   planet: PlanetOverviewItem;
   interior: PlanetInteriorData;
   formatTime: (ts?: number) => string;
-};
-
-const PIXEL_ASSETS = {
-  officeBg: publicAsset('star/office_bg_small.webp'),
-  desk: publicAsset('star/desk-v3.webp'),
-  avatar: publicAsset('star/star-idle-v5.png'),
-  server: publicAsset('botreview/server.gif'),
-  coffee: publicAsset('botreview/coffee-machine.gif'),
-  walls: publicAsset('botreview/walls.png'),
 };
 
 function renderSummary(summary?: string) {
@@ -172,14 +161,6 @@ export default function PlanetInteriorScene3D({ planet, interior, formatTime }: 
           <div className="planet-visual-card planet-visual-card-3d pixel-office-panel">
             <div ref={containerRef} className="planet-interior-scene">
               <canvas ref={canvasRef} className="planet-interior-canvas" />
-
-              <div className="planet-interior-pixel-layer" aria-hidden="true">
-                <img className="planet-pixel-bg" src={PIXEL_ASSETS.officeBg} alt="" />
-                <img className="planet-pixel-walls" src={PIXEL_ASSETS.walls} alt="" />
-                <img className="planet-pixel-server" src={PIXEL_ASSETS.server} alt="" />
-                <img className="planet-pixel-coffee" src={PIXEL_ASSETS.coffee} alt="" />
-                <img className="planet-pixel-desk" src={PIXEL_ASSETS.desk} alt="" />
-              </div>
 
               <div className="planet-interior-scene-overlay">
                 <div className="planet-interior-badge">像素办公室</div>
