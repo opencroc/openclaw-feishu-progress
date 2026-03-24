@@ -1701,6 +1701,8 @@ const taskDetailStyles = `
 }
 .planet-visual-card-3d {
   padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
   background:
     radial-gradient(circle at 18% 18%, rgba(86, 116, 143, 0.12), transparent 24%),
     radial-gradient(circle at 82% 16%, rgba(183, 128, 52, 0.1), transparent 24%),
@@ -1716,56 +1718,22 @@ const taskDetailStyles = `
 }
 .planet-interior-scene {
   position: relative;
-  min-height: 380px;
+  min-height: 420px;
+  height: 420px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 30% 24%, rgba(76, 176, 157, 0.12), transparent 32%),
+    radial-gradient(circle at 74% 28%, rgba(201, 164, 95, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(253, 250, 245, 0.98), rgba(238, 230, 216, 0.96));
 }
 .planet-interior-canvas {
-  width: 100%;
-  height: 380px;
-  display: block;
-}
-.planet-interior-pixel-layer {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.planet-interior-pixel-layer img {
-  position: absolute;
-  image-rendering: pixelated;
-  user-select: none;
-  pointer-events: none;
-}
-.planet-pixel-bg {
-  left: 50%;
-  top: 32px;
-  width: min(560px, 84%);
-  transform: translateX(-50%);
-  opacity: 0.18;
-}
-.planet-pixel-walls {
-  right: 20px;
-  top: 18px;
-  width: 180px;
-  opacity: 0.52;
-}
-.planet-pixel-server {
-  left: 22px;
-  bottom: 64px;
-  width: 86px;
-  opacity: 0.86;
-}
-.planet-pixel-coffee {
-  right: 36px;
-  bottom: 70px;
-  width: 72px;
-  opacity: 0.82;
-}
-.planet-pixel-desk {
-  left: 50%;
-  bottom: 8px;
-  width: min(420px, 74%);
-  transform: translateX(-50%);
-  opacity: 0.92;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 2;
 }
 .planet-interior-scene-overlay {
   position: absolute;
@@ -1775,6 +1743,7 @@ const taskDetailStyles = `
   gap: 10px;
   max-width: min(420px, calc(100% - 36px));
   pointer-events: none;
+  z-index: 3;
 }
 .planet-interior-badge {
   align-self: flex-start;
@@ -1815,6 +1784,7 @@ const taskDetailStyles = `
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  z-index: 4;
 }
 .planet-interior-toolbar button {
   border: 2px solid rgba(76, 57, 35, 0.16);
@@ -2042,10 +2012,6 @@ const taskDetailStyles = `
   .planet-interior-canvas {
     min-height: 420px;
     height: 420px;
-  }
-  .planet-pixel-walls {
-    width: 130px;
-    right: 14px;
   }
 }
 `;
@@ -3306,7 +3272,7 @@ export default function TasksPage() {
 
   return (
     <>
-      <style>{taskStyles}</style>
+      <style>{`${taskStyles}\n${taskDetailStyles}`}</style>
       <div className="task-page-topbar">
         <div className="task-page-topbar-left">
           <div className="task-page-topbar-dot"></div>
