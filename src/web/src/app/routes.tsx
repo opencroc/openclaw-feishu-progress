@@ -78,10 +78,11 @@ export const appRoutes: AppRoute[] = [
 
 export function resolveAppRoute(pathname: string): AppRoute {
   const normalizedPath = normalizeAppPath(pathname);
+  const tasksRoute = appRoutes.find((route) => route.id === 'tasks') || appRoutes[0];
   const direct = appRoutes.find((route) => route.path === normalizedPath);
   if (direct) return direct;
   if (normalizedPath.startsWith('/tasks/')) {
-    return appRoutes.find((route) => route.id === 'tasks') || appRoutes[0];
+    return tasksRoute;
   }
-  return appRoutes[0];
+  return tasksRoute;
 }

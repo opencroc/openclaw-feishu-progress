@@ -1,3 +1,10 @@
+/*
+ * @Author: wangchunji
+ * @Date: 2026-03-19 09:57:44
+ * @LastEditors: wangchunji
+ * @LastEditTime: 2026-03-25 10:54:50
+ * @Description: 
+ */
 import { Suspense, useEffect, useSyncExternalStore } from 'react';
 
 import { getCurrentAppPath, navigate, subscribeNavigation } from '@shared/navigation';
