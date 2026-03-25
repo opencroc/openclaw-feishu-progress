@@ -39,6 +39,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "assets:pixel-scenes": "tsx src/tools/pixel-scene-pipeline.ts",
     "build": "npm run web:build && tsup",
     "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "tsx watch src/cli/index.ts serve --host 0.0.0.0 --port 8765 --no-open",
@@ -54,7 +55,10 @@
     "test:stable": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
+    "test:pixel-scenes": "vitest run --config vitest.config.ts --environment jsdom src/__tests__/pixel-3d-scenes.test.ts src/__tests__/pixel-3d-scenes.runtime.test.tsx",
+    "test:pixel-scenes:coverage": "vitest run --config vitest.config.ts --environment jsdom --coverage --coverage.provider=v8 --coverage.include=src/tools/pixel-scene-pipeline.ts --coverage.include=src/web/src/scenes/OfficeScene.tsx --coverage.include=src/web/src/scenes/StarMapScene.tsx src/__tests__/pixel-3d-scenes.test.ts src/__tests__/pixel-3d-scenes.runtime.test.tsx",
     "typecheck": "tsc --noEmit",
+    "perf:pixel-scenes": "tsx src/tools/scene-performance-report.ts",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
@@ -72,14 +76,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@gltf-transform/cli": "^4.2.1",
     "@types/node": "^20.11.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^1.6.1",
     "concurrently": "^9.2.1",
     "eslint": "^10.0.3",
     "globals": "^17.4.0",
+    "jsdom": "^29.0.1",
+    "lighthouse": "^12.8.2",
     "tsup": "^8.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.4.0",

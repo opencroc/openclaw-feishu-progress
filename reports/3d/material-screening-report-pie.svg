@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+<rect width="640" height="360" fill="#f8f4ec" rx="24" />
+<text x="32" y="40" font-size="24" font-weight="700" fill="#2d2417">素材筛选结果</text>
+<text x="32" y="68" font-size="13" fill="#6b5d4f">像素办公室 / 3D 星图白名单统计</text>
+<path d="M 170 170 L 170.000 50.000 A 120 120 0 0 1 175.540 50.128 Z" fill="#b5943a" />
+<path d="M 170 170 L 175.540 50.128 A 120 120 0 1 1 170.000 50.000 Z" fill="#8b6eab" />
+<g transform="translate(360 40)"><rect width="14" height="14" rx="3" fill="#b5943a" /><text x="22" y="11" font-size="13" fill="#2d2417">需修复后交付 23</text></g>
+<g transform="translate(360 66)"><rect width="14" height="14" rx="3" fill="#8b6eab" /><text x="22" y="11" font-size="13" fill="#2d2417">废弃文件 3106</text></g>
+</svg>

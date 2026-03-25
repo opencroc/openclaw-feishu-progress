@@ -13,6 +13,7 @@ export type AppRoute = {
 };
 
 const OfficePage = lazy(() => import('@pages/office'));
+const StarMapPage = lazy(() => import('@pages/starmap'));
 const StudioPage = lazy(() => import('@pages/studio'));
 const PixelPage = lazy(() => import('@pages/pixel'));
 const TasksPage = lazy(() => import('@pages/tasks/page'));
@@ -21,12 +22,21 @@ const UniversePage = lazy(() => import('@pages/universe'));
 export const appRoutes: AppRoute[] = [
   {
     id: 'office',
-    path: '/',
-    title: 'OpenCroc Studio',
-    navLabel: '3D Office',
-    description: 'OpenCroc Studio office runtime view',
+    path: '/office',
+    title: 'OpenCroc Pixel Office',
+    navLabel: 'Pixel Office',
+    description: 'OpenCroc pixel office runtime view',
     variant: 'office',
     component: OfficePage,
+  },
+  {
+    id: 'starmap',
+    path: '/starmap',
+    title: 'OpenCroc Star Map',
+    navLabel: 'Star Map',
+    description: 'OpenCroc 3D pixel star map',
+    variant: 'graph',
+    component: StarMapPage,
   },
   {
     id: 'studio',

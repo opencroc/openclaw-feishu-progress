@@ -94,6 +94,25 @@ body {
   border-radius: 20px;
   box-shadow: var(--task-shadow);
 }
+.task-page-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.task-page-link {
+  border: 1px solid var(--task-border);
+  background: var(--task-card);
+  color: var(--task-text);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--task-shadow);
+}
+.task-page-link:hover {
+  border-color: var(--task-border-hover);
+}
 
 /* Main Layout */
 .task-page-layout {
@@ -3278,7 +3297,11 @@ export default function TasksPage() {
           <div className="task-page-topbar-dot"></div>
           <div className="task-page-topbar-title">任务空间 · 星球视图</div>
         </div>
-        <div className="task-page-topbar-ver">LIVE · v1.8.7</div>
+        <div className="task-page-topbar-right">
+          <button type="button" className="task-page-link" onClick={() => navigate('/office')}>像素办公室</button>
+          <button type="button" className="task-page-link" onClick={() => navigate('/starmap')}>3D 星图</button>
+          <div className="task-page-topbar-ver">LIVE · v1.8.7</div>
+        </div>
       </div>
       <div className="task-page-layout">
         <aside className="task-panel-left">

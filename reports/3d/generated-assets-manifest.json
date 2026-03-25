@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-03-25T01:07:26.096Z",
+  "office": {
+    "file": "office.packed.glb",
+    "compression": "draco+meshopt",
+    "sizeBytes": 19488
+  },
+  "starfield": {
+    "file": "starfield.atlas.glb",
+    "compression": "draco+meshopt",
+    "sizeBytes": 10412
+  },
+  "strictAccepted": 0,
+  "deliveryAccepted": 23,
+  "requiresFixup": 23
+}
